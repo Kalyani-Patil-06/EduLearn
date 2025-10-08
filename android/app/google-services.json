@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "642177916129",
+    "project_id": "edulearn-57970",
+    "storage_bucket": "edulearn-57970.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:642177916129:android:db32c84c6123832cd2eba0",
+        "android_client_info": {
+          "package_name": "com.example.e_education"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBLclU0Amr-gHPMhq7wQYbQfqDHTLbq58k"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
