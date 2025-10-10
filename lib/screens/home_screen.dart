@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../services/auth_service.dart';
+import '../services/firestore_service.dart';
 import '../widgets/feature_card.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -11,8 +12,10 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  final FirestoreService _firestoreService = FirestoreService();
   String userName = 'Student';
   bool _isLoading = true;
+  Map<String, int> _stats = {'enrolled': 0, 'completed': 0, 'hours': 0};
 
   @override
   void initState() {
@@ -21,14 +24,22 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _loadUserData() async {
-    final authService = Provider.of<AuthService>(context, listen: false);
-    final userData = await authService.getUserData();
+    setState(() => _isLoading = true);
     
-    if (mounted) {
-      setState(() {
-        userName = userData?['name'] ?? authService.currentUser?.displayName ?? 'Student';
-        _isLoading = false;
-      });
+    try {
+      final userData = await _firestoreService.getUserData();
+      final stats = await _firestoreService.getUserStats();
+      
+      if (mounted) {
+        setState(() {
+          userName = userData?['name'] ?? 'Student';
+          _stats = stats;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      print('Error loading home data: $e');
+      setState(() => _isLoading = false);
     }
   }
 
@@ -46,6 +57,9 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+            ),
             child: const Text('Logout'),
           ),
         ],
@@ -78,26 +92,28 @@ class _HomeScreenState extends State<HomeScreen> {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Hello, $userName! 👋',
-                                  style: const TextStyle(
-                                    fontSize: 24,
-                                    fontWeight: FontWeight.bold,
-                                    color: Color(0xFF2D3142),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Hello, $userName! 👋',
+                                    style: const TextStyle(
+                                      fontSize: 24,
+                                      fontWeight: FontWeight.bold,
+                                      color: Color(0xFF2D3142),
+                                    ),
                                   ),
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  'Ready to learn today?',
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    color: Colors.grey.shade600,
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    'Ready to learn today?',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      color: Colors.grey.shade600,
+                                    ),
                                   ),
-                                ),
-                              ],
+                                ],
+                              ),
                             ),
                             IconButton(
                               onPressed: _handleLogout,
@@ -144,9 +160,11 @@ class _HomeScreenState extends State<HomeScreen> {
                                       ),
                                     ),
                                     const SizedBox(height: 8),
-                                    const Text(
-                                      'Pick up where you left off',
-                                      style: TextStyle(
+                                    Text(
+                                      _stats['enrolled']! > 0 
+                                          ? 'You have ${_stats['enrolled']} active courses'
+                                          : 'Start your learning journey',
+                                      style: const TextStyle(
                                         fontSize: 14,
                                         color: Colors.white70,
                                       ),
@@ -220,11 +238,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               icon: Icons.assignment_rounded,
                               color: const Color(0xFFF59E0B),
                               onTap: () {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text('Assignments feature coming soon!'),
-                                  ),
-                                );
+                                Navigator.pushNamed(context, '/assignments');
                               },
                             ),
                             FeatureCard(
@@ -234,7 +248,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               onTap: () {
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   const SnackBar(
-                                    content: Text('Progress tracking coming soon!'),
+                                    content: Text('Progress tracking feature coming soon!'),
                                   ),
                                 );
                               },
@@ -245,7 +259,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         
                         // Stats Section
                         const Text(
-                          'Your Status',
+                          'Your Stats',
                           style: TextStyle(
                             fontSize: 20,
                             fontWeight: FontWeight.bold,
@@ -257,8 +271,8 @@ class _HomeScreenState extends State<HomeScreen> {
                           children: [
                             Expanded(
                               child: _buildStatCard(
-                                'Courses',
-                                '12',
+                                'Enrolled',
+                                '${_stats['enrolled']}',
                                 Icons.book_rounded,
                                 const Color(0xFF6C63FF),
                               ),
@@ -266,10 +280,32 @@ class _HomeScreenState extends State<HomeScreen> {
                             const SizedBox(width: 16),
                             Expanded(
                               child: _buildStatCard(
-                                'Hours',
-                                '48',
-                                Icons.access_time_rounded,
+                                'Completed',
+                                '${_stats['completed']}',
+                                Icons.check_circle_rounded,
                                 const Color(0xFF10B981),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _buildStatCard(
+                                'Hours',
+                                '${_stats['hours']}',
+                                Icons.access_time_rounded,
+                                const Color(0xFFF59E0B),
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: _buildStatCard(
+                                'Avg Score',
+                                '85%',
+                                Icons.star_rounded,
+                                const Color(0xFFEC4899),
                               ),
                             ),
                           ],
@@ -310,6 +346,7 @@ class _HomeScreenState extends State<HomeScreen> {
               fontSize: 14,
               color: Colors.grey.shade700,
             ),
+            textAlign: TextAlign.center,
           ),
         ],
       ),

@@ -24,6 +24,9 @@ dependencies:
   
   # Form Validation
   email_validator: ^2.1.17
+  
+  # Date Formatting
+  intl: ^0.18.1
 
 dev_dependencies:
   flutter_test:

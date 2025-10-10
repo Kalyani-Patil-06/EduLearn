@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import '../services/auth_service.dart';
+import '../services/firestore_service.dart';
+import '../models/course_model.dart';
 
 class CourseDetailScreen extends StatefulWidget {
-  final Map<String, dynamic> course;
+  final Course course;
 
   const CourseDetailScreen({super.key, required this.course});
 
@@ -12,8 +12,10 @@ class CourseDetailScreen extends StatefulWidget {
 }
 
 class _CourseDetailScreenState extends State<CourseDetailScreen> {
+  final FirestoreService _firestoreService = FirestoreService();
   bool _isEnrolled = false;
   bool _isLoading = false;
+  UserEnrollment? _enrollment;
 
   @override
   void initState() {
@@ -22,39 +24,91 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
   }
 
   Future<void> _checkEnrollment() async {
-    final authService = Provider.of<AuthService>(context, listen: false);
-    final enrolled = await authService.isEnrolledInCourse(widget.course['id']);
+    setState(() => _isLoading = true);
+    
+    final enrolled = await _firestoreService.isEnrolledInCourse(widget.course.id);
+    final enrollment = await _firestoreService.getCourseEnrollment(widget.course.id);
+    
     if (mounted) {
-      setState(() => _isEnrolled = enrolled);
+      setState(() {
+        _isEnrolled = enrolled;
+        _enrollment = enrollment;
+        _isLoading = false;
+      });
     }
   }
 
   Future<void> _handleEnroll() async {
     setState(() => _isLoading = true);
 
-    final authService = Provider.of<AuthService>(context, listen: false);
-    await authService.enrollInCourse(widget.course['id']);
+    final success = await _firestoreService.enrollInCourse(widget.course.id);
 
     if (mounted) {
-      setState(() {
-        _isEnrolled = true;
-        _isLoading = false;
-      });
+      if (success) {
+        setState(() {
+          _isEnrolled = true;
+          _isLoading = false;
+        });
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Successfully enrolled in ${widget.course['title']}!'),
-          backgroundColor: Colors.green,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        ),
-      );
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Successfully enrolled in ${widget.course.title}!'),
+            backgroundColor: Colors.green,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+        );
+        
+        // Reload enrollment data
+        _checkEnrollment();
+      } else {
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Failed to enroll. Please try again.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  Color _getColorFromHex(String hexColor) {
+    final hex = hexColor.replaceAll('#', '');
+    return Color(int.parse('FF$hex', radix: 16));
+  }
+
+  IconData _getIconFromName(String iconName) {
+    switch (iconName.toLowerCase()) {
+      case 'phone_android':
+      case 'phone_android_rounded':
+        return Icons.phone_android_rounded;
+      case 'design_services':
+      case 'design_services_rounded':
+        return Icons.design_services_rounded;
+      case 'data_object':
+      case 'data_object_rounded':
+        return Icons.data_object_rounded;
+      case 'campaign':
+      case 'campaign_rounded':
+        return Icons.campaign_rounded;
+      case 'psychology':
+      case 'psychology_rounded':
+        return Icons.psychology_rounded;
+      case 'functions':
+      case 'functions_rounded':
+        return Icons.functions_rounded;
+      default:
+        return Icons.school_rounded;
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final course = widget.course;
+    final color = _getColorFromHex(widget.course.colorValue);
+    final icon = _getIconFromName(widget.course.iconName);
+    final progress = _enrollment?.progress ?? 0.0;
+    final completedLessons = _enrollment?.completedLessons ?? 0;
     
     return Scaffold(
       body: CustomScrollView(
@@ -65,18 +119,18 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
             pinned: true,
             flexibleSpace: FlexibleSpaceBar(
               title: Text(
-                course['title'],
+                widget.course.title,
                 style: const TextStyle(
                   fontWeight: FontWeight.bold,
-                  fontSize: 18,
+                  fontSize: 16,
                 ),
               ),
               background: Container(
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     colors: [
-                      course['color'] as Color,
-                      (course['color'] as Color).withOpacity(0.7),
+                      color,
+                      color.withOpacity(0.7),
                     ],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
@@ -84,7 +138,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
                 ),
                 child: Center(
                   child: Icon(
-                    course['icon'] as IconData,
+                    icon,
                     size: 80,
                     color: Colors.white.withOpacity(0.3),
                   ),
@@ -104,13 +158,13 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     decoration: BoxDecoration(
-                      color: course['color'].withOpacity(0.1),
+                      color: color.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Text(
-                      course['level'],
+                      widget.course.level,
                       style: TextStyle(
-                        color: course['color'],
+                        color: color,
                         fontWeight: FontWeight.bold,
                         fontSize: 12,
                       ),
@@ -129,7 +183,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
                   ),
                   const SizedBox(height: 12),
                   Text(
-                    course['description'],
+                    widget.course.description,
                     style: TextStyle(
                       fontSize: 15,
                       color: Colors.grey.shade700,
@@ -145,7 +199,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
                         child: _buildInfoCard(
                           Icons.schedule_rounded,
                           'Duration',
-                          course['duration'],
+                          widget.course.duration,
                           const Color(0xFF6C63FF),
                         ),
                       ),
@@ -154,7 +208,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
                         child: _buildInfoCard(
                           Icons.play_circle_outline_rounded,
                           'Lessons',
-                          '${course['lessons']}',
+                          '${widget.course.lessons}',
                           const Color(0xFF10B981),
                         ),
                       ),
@@ -167,7 +221,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
                         child: _buildInfoCard(
                           Icons.people_outline_rounded,
                           'Students',
-                          '${course['students']}',
+                          '${widget.course.students}',
                           const Color(0xFFF59E0B),
                         ),
                       ),
@@ -175,12 +229,69 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
                       Expanded(
                         child: _buildInfoCard(
                           Icons.person_outline_rounded,
-                          'Instructor',
-                          course['instructor'],
+                          'Level',
+                          widget.course.level,
                           const Color(0xFFEC4899),
                         ),
                       ),
                     ],
+                  ),
+                  const SizedBox(height: 24),
+                  
+                  // Instructor Info
+                  const Text(
+                    'Instructor',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF2D3142),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade50,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.grey.shade200),
+                    ),
+                    child: Row(
+                      children: [
+                        CircleAvatar(
+                          radius: 30,
+                          backgroundColor: color.withOpacity(0.2),
+                          child: Icon(
+                            Icons.person,
+                            size: 32,
+                            color: color,
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                widget.course.instructor,
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: Color(0xFF2D3142),
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                'Expert Instructor',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: Colors.grey.shade600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                   const SizedBox(height: 24),
                   
@@ -215,11 +326,11 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
                                 ),
                               ),
                               Text(
-                                '${(course['progress'] * 100).toInt()}%',
+                                '${(progress * 100).toInt()}%',
                                 style: TextStyle(
                                   fontSize: 16,
                                   fontWeight: FontWeight.bold,
-                                  color: course['color'],
+                                  color: color,
                                 ),
                               ),
                             ],
@@ -228,13 +339,24 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
                           ClipRRect(
                             borderRadius: BorderRadius.circular(10),
                             child: LinearProgressIndicator(
-                              value: course['progress'],
+                              value: progress,
                               minHeight: 10,
                               backgroundColor: Colors.grey.shade200,
-                              valueColor: AlwaysStoppedAnimation<Color>(
-                                course['color'],
-                              ),
+                              valueColor: AlwaysStoppedAnimation<Color>(color),
                             ),
+                          ),
+                          const SizedBox(height: 16),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                'Completed: $completedLessons/${widget.course.lessons} lessons',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: Colors.grey.shade600,
+                                ),
+                              ),
+                            ],
                           ),
                           const SizedBox(height: 16),
                           ElevatedButton.icon(
@@ -249,6 +371,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
                             label: const Text('Continue Learning'),
                             style: ElevatedButton.styleFrom(
                               minimumSize: const Size(double.infinity, 48),
+                              backgroundColor: color,
                             ),
                           ),
                         ],
@@ -311,7 +434,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
                     )
                   : const Icon(Icons.check_circle_rounded),
               label: Text(_isLoading ? 'Enrolling...' : 'Enroll Now'),
-              backgroundColor: course['color'],
+              backgroundColor: color,
             ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
     );

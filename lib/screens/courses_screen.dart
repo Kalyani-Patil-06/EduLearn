@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
-import '../widgets/course_card.dart';
+import '../services/firestore_service.dart';
+import '../models/course_model.dart';
+import '../widgets/course_card_dynamic.dart';
 
 class CoursesScreen extends StatefulWidget {
   const CoursesScreen({super.key});
@@ -9,6 +11,7 @@ class CoursesScreen extends StatefulWidget {
 }
 
 class _CoursesScreenState extends State<CoursesScreen> {
+  final FirestoreService _firestoreService = FirestoreService();
   String _selectedCategory = 'All';
   
   final List<String> _categories = [
@@ -18,100 +21,6 @@ class _CoursesScreenState extends State<CoursesScreen> {
     'Business',
     'Mathematics',
   ];
-
-  final List<Map<String, dynamic>> _courses = [
-    {
-      'id': '1',
-      'title': 'Flutter Development',
-      'description': 'Learn to build beautiful cross-platform mobile apps with Flutter and Dart.',
-      'instructor': 'Dr. Sarah Johnson',
-      'duration': '12 weeks',
-      'lessons': 48,
-      'students': 1250,
-      'progress': 0.65,
-      'category': 'Programming',
-      'level': 'Intermediate',
-      'icon': Icons.phone_android_rounded,
-      'color': const Color(0xFF6C63FF),
-    },
-    {
-      'id': '2',
-      'title': 'UI/UX Design Fundamentals',
-      'description': 'Master the principles of user interface and user experience design.',
-      'instructor': 'Prof. Michael Chen',
-      'duration': '8 weeks',
-      'lessons': 32,
-      'students': 980,
-      'progress': 0.30,
-      'category': 'Design',
-      'level': 'Beginner',
-      'icon': Icons.design_services_rounded,
-      'color': const Color(0xFFEC4899),
-    },
-    {
-      'id': '3',
-      'title': 'Data Structures & Algorithms',
-      'description': 'Deep dive into essential computer science concepts and problem-solving.',
-      'instructor': 'Dr. Emily Rodriguez',
-      'duration': '16 weeks',
-      'lessons': 64,
-      'students': 2100,
-      'progress': 0.45,
-      'category': 'Programming',
-      'level': 'Advanced',
-      'icon': Icons.data_object_rounded,
-      'color': const Color(0xFF10B981),
-    },
-    {
-      'id': '4',
-      'title': 'Digital Marketing',
-      'description': 'Learn strategies to grow your business online with modern marketing techniques.',
-      'instructor': 'Prof. David Thompson',
-      'duration': '10 weeks',
-      'lessons': 40,
-      'students': 1500,
-      'progress': 0.0,
-      'category': 'Business',
-      'level': 'Beginner',
-      'icon': Icons.campaign_rounded,
-      'color': const Color(0xFFF59E0B),
-    },
-    {
-      'id': '5',
-      'title': 'Machine Learning Basics',
-      'description': 'Introduction to machine learning concepts, algorithms, and applications.',
-      'instructor': 'Dr. Lisa Wang',
-      'duration': '14 weeks',
-      'lessons': 56,
-      'students': 1800,
-      'progress': 0.20,
-      'category': 'Programming',
-      'level': 'Intermediate',
-      'icon': Icons.psychology_rounded,
-      'color': const Color(0xFF8B5CF6),
-    },
-    {
-      'id': '6',
-      'title': 'Calculus I',
-      'description': 'Fundamental concepts of limits, derivatives, and integrals.',
-      'instructor': 'Prof. Robert Anderson',
-      'duration': '12 weeks',
-      'lessons': 48,
-      'students': 950,
-      'progress': 0.0,
-      'category': 'Mathematics',
-      'level': 'Beginner',
-      'icon': Icons.functions_rounded,
-      'color': const Color(0xFF3B82F6),
-    },
-  ];
-
-  List<Map<String, dynamic>> get _filteredCourses {
-    if (_selectedCategory == 'All') {
-      return _courses;
-    }
-    return _courses.where((course) => course['category'] == _selectedCategory).toList();
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -177,24 +86,52 @@ class _CoursesScreenState extends State<CoursesScreen> {
           ),
           const SizedBox(height: 16),
           
-          // Course Count
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: Text(
-              '${_filteredCourses.length} ${_filteredCourses.length == 1 ? 'Course' : 'Courses'} Available',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-                color: Colors.grey.shade700,
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
-          
-          // Courses List
+          // Courses List from Firestore
           Expanded(
-            child: _filteredCourses.isEmpty
-                ? Center(
+            child: StreamBuilder<List<Course>>(
+              stream: _selectedCategory == 'All'
+                  ? _firestoreService.getCoursesStream()
+                  : _firestoreService.getCoursesByCategory(_selectedCategory),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                
+                if (snapshot.hasError) {
+                  return Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.error_outline,
+                          size: 80,
+                          color: Colors.grey.shade400,
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          'Error loading courses',
+                          style: TextStyle(
+                            fontSize: 18,
+                            color: Colors.grey.shade600,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Please try again later',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey.shade500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }
+                
+                final courses = snapshot.data ?? [];
+                
+                if (courses.isEmpty) {
+                  return Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
@@ -211,26 +148,60 @@ class _CoursesScreenState extends State<CoursesScreen> {
                             color: Colors.grey.shade600,
                           ),
                         ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Check back later for new courses',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey.shade500,
+                          ),
+                        ),
                       ],
                     ),
-                  )
-                : ListView.builder(
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-                    itemCount: _filteredCourses.length,
-                    itemBuilder: (context, index) {
-                      final course = _filteredCourses[index];
-                      return CourseCard(
-                        course: course,
-                        onTap: () {
-                          Navigator.pushNamed(
-                            context,
-                            '/course-detail',
-                            arguments: course,
+                  );
+                }
+                
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Course Count
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      child: Text(
+                        '${courses.length} ${courses.length == 1 ? 'Course' : 'Courses'} Available',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.grey.shade700,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    
+                    // Courses List
+                    Expanded(
+                      child: ListView.builder(
+                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                        itemCount: courses.length,
+                        itemBuilder: (context, index) {
+                          final course = courses[index];
+                          return CourseCardDynamic(
+                            course: course,
+                            onTap: () {
+                              Navigator.pushNamed(
+                                context,
+                                '/course-detail',
+                                arguments: course,
+                              );
+                            },
                           );
                         },
-                      );
-                    },
-                  ),
+                      ),
+                    ),
+                  ],
+                );
+              },
+            ),
           ),
         ],
       ),

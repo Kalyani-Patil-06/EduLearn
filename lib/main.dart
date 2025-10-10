@@ -9,8 +9,11 @@ import 'screens/home_screen.dart';
 import 'screens/courses_screen.dart';
 import 'screens/course_detail_screen.dart';
 import 'screens/profile_screen.dart';
+import 'screens/assignments_screen.dart';
+import 'screens/course_detail_screen.dart';
 import 'services/auth_service.dart';
 import 'firebase_options.dart';
+import 'models/course_model.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -86,10 +89,11 @@ class MyApp extends StatelessWidget {
           '/home': (context) => const HomeScreen(),
           '/courses': (context) => const CoursesScreen(),
           '/profile': (context) => const ProfileScreen(),
+          '/assignments': (context) => const AssignmentsScreen(),
         },
         onGenerateRoute: (settings) {
           if (settings.name == '/course-detail') {
-            final course = settings.arguments as Map<String, dynamic>;
+            final course = settings.arguments as Course;
             return MaterialPageRoute(
               builder: (context) => CourseDetailScreen(course: course),
             );
