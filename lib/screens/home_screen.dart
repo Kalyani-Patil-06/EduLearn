@@ -16,6 +16,7 @@ class _HomeScreenState extends State<HomeScreen> {
   String userName = 'Student';
   bool _isLoading = true;
   Map<String, int> _stats = {'enrolled': 0, 'completed': 0, 'hours': 0};
+  int _currentIndex = 0;
 
   @override
   void initState() {
@@ -57,9 +58,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
-            ),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
             child: const Text('Logout'),
           ),
         ],
@@ -73,283 +72,261 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  Widget _buildHomeContent() {
+    return RefreshIndicator(
+      onRefresh: _loadUserData,
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        child: Padding(
+          padding: const EdgeInsets.all(20.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Header
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Hello, $userName! 👋',
+                          style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Color(0xFF2D3142)),
+                        ),
+                        const SizedBox(height: 4),
+                        Text('Ready to learn today?', style: TextStyle(fontSize: 14, color: Colors.grey.shade600)),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 30),
+              
+              // Featured Banner
+              Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF6C63FF), Color(0xFF8B5CF6)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFF6C63FF).withOpacity(0.3),
+                      blurRadius: 15,
+                      offset: const Offset(0, 8),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('Continue Learning', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white)),
+                          const SizedBox(height: 8),
+                          Text(
+                            _stats['enrolled']! > 0 ? 'You have ${_stats['enrolled']} active courses' : 'Start your learning journey',
+                            style: const TextStyle(fontSize: 14, color: Colors.white70),
+                          ),
+                          const SizedBox(height: 16),
+                          ElevatedButton(
+                            onPressed: () => Navigator.pushNamed(context, '/courses'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.white,
+                              foregroundColor: const Color(0xFF6C63FF),
+                              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                            ),
+                            child: const Text('View Courses'),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const Icon(Icons.auto_stories_rounded, size: 80, color: Colors.white24),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 30),
+              
+              // Quick Access
+              const Text('Quick Access', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFF2D3142))),
+              const SizedBox(height: 16),
+              
+              GridView.count(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                crossAxisCount: 2,
+                crossAxisSpacing: 16,
+                mainAxisSpacing: 16,
+                childAspectRatio: 1.1,
+                children: [
+                  FeatureCard(
+                    title: 'My Courses',
+                    icon: Icons.school_rounded,
+                    color: const Color(0xFF6C63FF),
+                    onTap: () => Navigator.pushNamed(context, '/courses'),
+                  ),
+                  FeatureCard(
+                    title: 'Assignments',
+                    icon: Icons.assignment_rounded,
+                    color: const Color(0xFFF59E0B),
+                    onTap: () => Navigator.pushNamed(context, '/assignments'),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 30),
+              
+              // Stats Section - SMALLER SIZE
+              const Text('Your Stats', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFF2D3142))),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Expanded(child: _buildStatCard('Enrolled', '${_stats['enrolled']}', Icons.book_rounded, const Color(0xFF6C63FF))),
+                  const SizedBox(width: 12),
+                  Expanded(child: _buildStatCard('Completed', '${_stats['completed']}', Icons.check_circle_rounded, const Color(0xFF10B981))),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(child: _buildStatCard('Hours', '${_stats['hours']}', Icons.access_time_rounded, const Color(0xFFF59E0B))),
+                  const SizedBox(width: 12),
+                  Expanded(child: _buildStatCard('Avg Score', '85%', Icons.star_rounded, const Color(0xFFEC4899))),
+                ],
+              ),
+              const SizedBox(height: 100), // Space for bottom nav
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: SafeArea(
         child: _isLoading
             ? const Center(child: CircularProgressIndicator())
-            : RefreshIndicator(
-                onRefresh: _loadUserData,
-                child: SingleChildScrollView(
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  child: Padding(
-                    padding: const EdgeInsets.all(20.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Header
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'Hello, $userName! 👋',
-                                    style: const TextStyle(
-                                      fontSize: 24,
-                                      fontWeight: FontWeight.bold,
-                                      color: Color(0xFF2D3142),
-                                    ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    'Ready to learn today?',
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      color: Colors.grey.shade600,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            IconButton(
-                              onPressed: _handleLogout,
-                              icon: const Icon(Icons.logout_rounded),
-                              style: IconButton.styleFrom(
-                                backgroundColor: Colors.red.shade50,
-                                foregroundColor: Colors.red,
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 30),
-                        
-                        // Featured Banner
-                        Container(
-                          padding: const EdgeInsets.all(20),
-                          decoration: BoxDecoration(
-                            gradient: const LinearGradient(
-                              colors: [Color(0xFF6C63FF), Color(0xFF8B5CF6)],
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                            ),
-                            borderRadius: BorderRadius.circular(20),
-                            boxShadow: [
-                              BoxShadow(
-                                color: const Color(0xFF6C63FF).withOpacity(0.3),
-                                blurRadius: 15,
-                                offset: const Offset(0, 8),
-                              ),
-                            ],
-                          ),
-                          child: Row(
-                            children: [
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    const Text(
-                                      'Continue Learning',
-                                      style: TextStyle(
-                                        fontSize: 20,
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.white,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 8),
-                                    Text(
-                                      _stats['enrolled']! > 0 
-                                          ? 'You have ${_stats['enrolled']} active courses'
-                                          : 'Start your learning journey',
-                                      style: const TextStyle(
-                                        fontSize: 14,
-                                        color: Colors.white70,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 16),
-                                    ElevatedButton(
-                                      onPressed: () {
-                                        Navigator.pushNamed(context, '/courses');
-                                      },
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: Colors.white,
-                                        foregroundColor: const Color(0xFF6C63FF),
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 24,
-                                          vertical: 12,
-                                        ),
-                                      ),
-                                      child: const Text('View Courses'),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              const Icon(
-                                Icons.auto_stories_rounded,
-                                size: 80,
-                                color: Colors.white24,
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 30),
-                        
-                        // Quick Access
-                        const Text(
-                          'Quick Access',
-                          style: TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFF2D3142),
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        
-                        // Feature Cards Grid
-                        GridView.count(
-                          shrinkWrap: true,
-                          physics: const NeverScrollableScrollPhysics(),
-                          crossAxisCount: 2,
-                          crossAxisSpacing: 16,
-                          mainAxisSpacing: 16,
-                          childAspectRatio: 1.1,
-                          children: [
-                            FeatureCard(
-                              title: 'My Courses',
-                              icon: Icons.school_rounded,
-                              color: const Color(0xFF6C63FF),
-                              onTap: () {
-                                Navigator.pushNamed(context, '/courses');
-                              },
-                            ),
-                            FeatureCard(
-                              title: 'My Profile',
-                              icon: Icons.person_rounded,
-                              color: const Color(0xFF10B981),
-                              onTap: () {
-                                Navigator.pushNamed(context, '/profile');
-                              },
-                            ),
-                            FeatureCard(
-                              title: 'Assignments',
-                              icon: Icons.assignment_rounded,
-                              color: const Color(0xFFF59E0B),
-                              onTap: () {
-                                Navigator.pushNamed(context, '/assignments');
-                              },
-                            ),
-                            FeatureCard(
-                              title: 'Progress',
-                              icon: Icons.show_chart_rounded,
-                              color: const Color(0xFFEC4899),
-                              onTap: () {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text('Progress tracking feature coming soon!'),
-                                  ),
-                                );
-                              },
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 30),
-                        
-                        // Stats Section
-                        const Text(
-                          'Your Stats',
-                          style: TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFF2D3142),
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: _buildStatCard(
-                                'Enrolled',
-                                '${_stats['enrolled']}',
-                                Icons.book_rounded,
-                                const Color(0xFF6C63FF),
-                              ),
-                            ),
-                            const SizedBox(width: 16),
-                            Expanded(
-                              child: _buildStatCard(
-                                'Completed',
-                                '${_stats['completed']}',
-                                Icons.check_circle_rounded,
-                                const Color(0xFF10B981),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 16),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: _buildStatCard(
-                                'Hours',
-                                '${_stats['hours']}',
-                                Icons.access_time_rounded,
-                                const Color(0xFFF59E0B),
-                              ),
-                            ),
-                            const SizedBox(width: 16),
-                            Expanded(
-                              child: _buildStatCard(
-                                'Avg Score',
-                                '85%',
-                                Icons.star_rounded,
-                                const Color(0xFFEC4899),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
+            : IndexedStack(
+                index: _currentIndex,
+                children: [
+                  _buildHomeContent(),
+                  Navigator(
+                    onGenerateRoute: (settings) => MaterialPageRoute(
+                      builder: (context) => const ProfileScreenWrapper(),
                     ),
                   ),
-                ),
+                ],
               ),
+      ),
+      bottomNavigationBar: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.grey.shade300,
+              blurRadius: 10,
+              offset: const Offset(0, -5),
+            ),
+          ],
+        ),
+        child: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                _buildNavItem(Icons.home_rounded, 'Home', 0),
+                _buildNavItem(Icons.person_rounded, 'Profile', 1),
+                _buildNavItem(Icons.logout_rounded, 'Logout', 2),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNavItem(IconData icon, String label, int index) {
+    final isSelected = _currentIndex == index;
+    final color = isSelected ? const Color(0xFF6C63FF) : Colors.grey.shade600;
+    
+    return GestureDetector(
+      onTap: () {
+        if (index == 2) {
+          _handleLogout();
+        } else {
+          if (index == 1) {
+            Navigator.pushNamed(context, '/profile');
+          } else {
+            setState(() => _currentIndex = index);
+          }
+        }
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+        decoration: BoxDecoration(
+          color: isSelected ? const Color(0xFF6C63FF).withOpacity(0.1) : Colors.transparent,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, color: color, size: 26),
+            const SizedBox(height: 4),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                color: color,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 
   Widget _buildStatCard(String label, String value, IconData icon, Color color) {
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(16), // REDUCED from 20
       decoration: BoxDecoration(
         color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(12),
         border: Border.all(color: color.withOpacity(0.3)),
       ),
       child: Column(
         children: [
-          Icon(icon, color: color, size: 32),
-          const SizedBox(height: 12),
+          Icon(icon, color: color, size: 28), // REDUCED from 32
+          const SizedBox(height: 8),
           Text(
             value,
-            style: TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-              color: color,
-            ),
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: color), // REDUCED from 24
           ),
           const SizedBox(height: 4),
           Text(
             label,
-            style: TextStyle(
-              fontSize: 14,
-              color: Colors.grey.shade700,
-            ),
+            style: TextStyle(fontSize: 12, color: Colors.grey.shade700), // REDUCED from 14
             textAlign: TextAlign.center,
           ),
         ],
       ),
     );
+  }
+}
+
+// Wrapper for profile screen
+class ProfileScreenWrapper extends StatelessWidget {
+  const ProfileScreenWrapper({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(); // Profile is accessed via route
   }
 }

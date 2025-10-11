@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import '/models/course_model.dart';
-import '/services/firestore_service.dart';
-import '/widgets/custom_button.dart';
-import '/widgets/custom_text_field.dart';
+import '../../models/course_model.dart';
+import '../../services/firestore_service.dart';
+import '../../widgets/custom_button.dart';
+import '../../widgets/custom_text_field.dart';
 
 class CreateCourseScreen extends StatefulWidget {
   const CreateCourseScreen({super.key});
@@ -16,13 +16,13 @@ class _CreateCourseScreenState extends State<CreateCourseScreen> {
   final _titleController = TextEditingController();
   final _descriptionController = TextEditingController();
   final _durationController = TextEditingController();
+  final _iconController = TextEditingController();
+  final _colorController = TextEditingController();
   final FirestoreService _firestoreService = FirestoreService();
   
   bool _isLoading = false;
   String _selectedCategory = 'Programming';
   String _selectedLevel = 'Beginner';
-  String _selectedIcon = 'school';
-  String _selectedColor = '6C63FF';
 
   final List<String> _categories = [
     'Programming',
@@ -34,29 +34,13 @@ class _CreateCourseScreenState extends State<CreateCourseScreen> {
 
   final List<String> _levels = ['Beginner', 'Intermediate', 'Advanced'];
 
-  final Map<String, String> _icons = {
-    'school': 'school',
-    'code': 'data_object_rounded',
-    'design': 'design_services_rounded',
-    'business': 'campaign_rounded',
-    'science': 'psychology_rounded',
-    'math': 'functions_rounded',
-  };
-
-  final Map<String, String> _colors = {
-    'Purple': '6C63FF',
-    'Blue': '3B82F6',
-    'Green': '10B981',
-    'Orange': 'F59E0B',
-    'Pink': 'EC4899',
-    'Red': 'EF4444',
-  };
-
   @override
   void dispose() {
     _titleController.dispose();
     _descriptionController.dispose();
     _durationController.dispose();
+    _iconController.dispose();
+    _colorController.dispose();
     super.dispose();
   }
 
@@ -78,8 +62,8 @@ class _CreateCourseScreenState extends State<CreateCourseScreen> {
       students: 0,
       category: _selectedCategory,
       level: _selectedLevel,
-      iconName: _icons[_selectedIcon]!,
-      colorValue: _selectedColor,
+      iconName: _iconController.text.trim().isEmpty ? 'school' : _iconController.text.trim(),
+      colorValue: _colorController.text.trim().isEmpty ? '6C63FF' : _colorController.text.trim().replaceAll('#', ''),
     );
 
     final courseId = await _firestoreService.createCourse(newCourse);
@@ -274,87 +258,21 @@ class _CreateCourseScreenState extends State<CreateCourseScreen> {
               ),
               const SizedBox(height: 20),
 
-              // Icon Selection
-              const Text(
-                'Course Icon',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: Color(0xFF2D3142),
-                ),
-              ),
-              const SizedBox(height: 12),
-              Wrap(
-                spacing: 12,
-                runSpacing: 12,
-                children: _icons.entries.map((entry) {
-                  final isSelected = _selectedIcon == entry.key;
-                  return GestureDetector(
-                    onTap: () => setState(() => _selectedIcon = entry.key),
-                    child: Container(
-                      width: 60,
-                      height: 60,
-                      decoration: BoxDecoration(
-                        color: isSelected 
-                            ? const Color(0xFF6C63FF).withOpacity(0.1)
-                            : Colors.grey.shade100,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: isSelected 
-                              ? const Color(0xFF6C63FF)
-                              : Colors.transparent,
-                          width: 2,
-                        ),
-                      ),
-                      child: Icon(
-                        _getIconData(entry.value),
-                        color: isSelected 
-                            ? const Color(0xFF6C63FF)
-                            : Colors.grey.shade600,
-                        size: 30,
-                      ),
-                    ),
-                  );
-                }).toList(),
+              // Icon Name Field (Optional - for advanced users)
+              CustomTextField(
+                controller: _iconController,
+                label: 'Icon Name (Optional)',
+                hint: 'e.g., school, code, design',
+                prefixIcon: Icons.image_outlined,
               ),
               const SizedBox(height: 20),
 
-              // Color Selection
-              const Text(
-                'Course Color',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: Color(0xFF2D3142),
-                ),
-              ),
-              const SizedBox(height: 12),
-              Wrap(
-                spacing: 12,
-                runSpacing: 12,
-                children: _colors.entries.map((entry) {
-                  final isSelected = _selectedColor == entry.value;
-                  final color = Color(int.parse('FF${entry.value}', radix: 16));
-                  
-                  return GestureDetector(
-                    onTap: () => setState(() => _selectedColor = entry.value),
-                    child: Container(
-                      width: 60,
-                      height: 60,
-                      decoration: BoxDecoration(
-                        color: color,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: isSelected ? Colors.black : Colors.transparent,
-                          width: 3,
-                        ),
-                      ),
-                      child: isSelected
-                          ? const Icon(Icons.check, color: Colors.white, size: 30)
-                          : null,
-                    ),
-                  );
-                }).toList(),
+              // Color Code Field (Optional - for advanced users)
+              CustomTextField(
+                controller: _colorController,
+                label: 'Color Code (Optional)',
+                hint: 'e.g., 6C63FF or #6C63FF',
+                prefixIcon: Icons.color_lens_outlined,
               ),
               const SizedBox(height: 40),
 
@@ -370,22 +288,5 @@ class _CreateCourseScreenState extends State<CreateCourseScreen> {
         ),
       ),
     );
-  }
-
-  IconData _getIconData(String iconName) {
-    switch (iconName) {
-      case 'data_object_rounded':
-        return Icons.data_object_rounded;
-      case 'design_services_rounded':
-        return Icons.design_services_rounded;
-      case 'campaign_rounded':
-        return Icons.campaign_rounded;
-      case 'psychology_rounded':
-        return Icons.psychology_rounded;
-      case 'functions_rounded':
-        return Icons.functions_rounded;
-      default:
-        return Icons.school_rounded;
-    }
   }
 }
