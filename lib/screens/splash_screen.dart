@@ -64,9 +64,9 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: [
-              const Color(0xFF6C63FF),
-              const Color(0xFF8B5CF6),
-              const Color(0xFFA855F7),
+              const Color(0xFF4ECDC4),
+              const Color.fromARGB(255, 110, 238, 230),
+              const Color.fromARGB(255, 176, 249, 244),
             ],
           ),
         ),
@@ -98,13 +98,13 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                         child: const Icon(
                           Icons.school_rounded,
                           size: 80,
-                          color: Color(0xFF6C63FF),
+                          color: Color(0xFF4ECDC4),
                         ),
                       ),
                       const SizedBox(height: 30),
                       // App Name
                       const Text(
-                        'EduLearn',
+                        'Learnify',
                         style: TextStyle(
                           fontSize: 42,
                           fontWeight: FontWeight.bold,

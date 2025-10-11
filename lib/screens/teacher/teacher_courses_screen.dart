@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '/models/course_model.dart';
 import '/services/firestore_service.dart';
-import '/widgets/course_card_dynamic.dart';
 
 class TeacherCoursesScreen extends StatefulWidget {
   const TeacherCoursesScreen({super.key});
@@ -257,163 +256,194 @@ class _TeacherCoursesScreenState extends State<TeacherCoursesScreen> {
           ),
         ],
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Header
-          Container(
-            height: 100,
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [color, color.withOpacity(0.7)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(16),
-                topRight: Radius.circular(16),
-              ),
-            ),
-            child: Stack(
-              children: [
-                Positioned(
-                  right: -20,
-                  top: -20,
-                  child: Icon(
-                    icon,
-                    size: 100,
-                    color: Colors.white.withOpacity(0.2),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(16),
+          // FIX: Make course card tappable for teachers
+          onTap: () {
+            Navigator.pushNamed(
+              context,
+              '/course-detail',
+              arguments: course,
+            );
+          },
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Header
+              Container(
+                height: 100,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [color, color.withOpacity(0.7)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(16),
+                    topRight: Radius.circular(16),
                   ),
                 ),
-                Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.3),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Text(
-                          course.category,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
+                child: Stack(
+                  children: [
+                    Positioned(
+                      right: -20,
+                      top: -20,
+                      child: Icon(
+                        icon,
+                        size: 100,
+                        color: Colors.white.withOpacity(0.2),
                       ),
-                      PopupMenuButton<String>(
-                        icon: const Icon(Icons.more_vert, color: Colors.white),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        onSelected: (value) {
-                          if (value == 'edit') {
-                            Navigator.pushNamed(
-                              context,
-                              '/edit-course',
-                              arguments: course,
-                            );
-                          } else if (value == 'students') {
-                            Navigator.pushNamed(
-                              context,
-                              '/course-students',
-                              arguments: course,
-                            );
-                          } else if (value == 'delete') {
-                            _showDeleteDialog(course);
-                          }
-                        },
-                        itemBuilder: (context) => [
-                          const PopupMenuItem(
-                            value: 'edit',
-                            child: Row(
-                              children: [
-                                Icon(Icons.edit, size: 20),
-                                SizedBox(width: 12),
-                                Text('Edit Course'),
-                              ],
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.3),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Text(
+                              course.category,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
                           ),
-                          const PopupMenuItem(
-                            value: 'students',
-                            child: Row(
-                              children: [
-                                Icon(Icons.people, size: 20),
-                                SizedBox(width: 12),
-                                Text('View Students'),
-                              ],
+                          PopupMenuButton<String>(
+                            icon: const Icon(Icons.more_vert, color: Colors.white),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
                             ),
-                          ),
-                          const PopupMenuItem(
-                            value: 'delete',
-                            child: Row(
-                              children: [
-                                Icon(Icons.delete, size: 20, color: Colors.red),
-                                SizedBox(width: 12),
-                                Text('Delete', style: TextStyle(color: Colors.red)),
-                              ],
-                            ),
+                            onSelected: (value) {
+                              if (value == 'edit') {
+                                Navigator.pushNamed(
+                                  context,
+                                  '/edit-course',
+                                  arguments: course,
+                                );
+                              } else if (value == 'students') {
+                                Navigator.pushNamed(
+                                  context,
+                                  '/course-students',
+                                  arguments: course,
+                                );
+                              } else if (value == 'manage') {
+                                // Navigate to course detail to manage content
+                                Navigator.pushNamed(
+                                  context,
+                                  '/course-detail',
+                                  arguments: course,
+                                );
+                              } else if (value == 'delete') {
+                                _showDeleteDialog(course);
+                              }
+                            },
+                            itemBuilder: (context) => [
+                              const PopupMenuItem(
+                                value: 'manage',
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.dashboard, size: 20),
+                                    SizedBox(width: 12),
+                                    Text('Manage Course'),
+                                  ],
+                                ),
+                              ),
+                              const PopupMenuItem(
+                                value: 'edit',
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.edit, size: 20),
+                                    SizedBox(width: 12),
+                                    Text('Edit Details'),
+                                  ],
+                                ),
+                              ),
+                              const PopupMenuItem(
+                                value: 'students',
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.people, size: 20),
+                                    SizedBox(width: 12),
+                                    Text('View Students'),
+                                  ],
+                                ),
+                              ),
+                              const PopupMenuItem(
+                                value: 'delete',
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.delete, size: 20, color: Colors.red),
+                                    SizedBox(width: 12),
+                                    Text('Delete', style: TextStyle(color: Colors.red)),
+                                  ],
+                                ),
+                              ),
+                            ],
                           ),
                         ],
                       ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-          
-          // Content
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  course.title,
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF2D3142),
-                  ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  course.description,
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey.shade600,
-                    height: 1.4,
-                  ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 16),
-                Row(
-                  children: [
-                    _buildInfoChip(
-                      Icons.people_outline,
-                      '${course.students} students',
-                      color,
-                    ),
-                    const SizedBox(width: 12),
-                    _buildInfoChip(
-                      Icons.play_circle_outline,
-                      '${course.lessons} lessons',
-                      Colors.grey.shade700,
                     ),
                   ],
                 ),
-              ],
-            ),
+              ),
+              
+              // Content
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      course.title,
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF2D3142),
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      course.description,
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey.shade600,
+                        height: 1.4,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        _buildInfoChip(
+                          Icons.people_outline,
+                          '${course.students} students',
+                          color,
+                        ),
+                        const SizedBox(width: 12),
+                        _buildInfoChip(
+                          Icons.play_circle_outline,
+                          '${course.lessons} lessons',
+                          Colors.grey.shade700,
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
@@ -473,4 +503,4 @@ class _TeacherCoursesScreenState extends State<TeacherCoursesScreen> {
       ),
     );
   }
-} 
+}

@@ -92,10 +92,20 @@ class _HomeScreenState extends State<HomeScreen> {
                       children: [
                         Text(
                           'Hello, $userName! 👋',
-                          style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Color(0xFF2D3142)),
+                          style: const TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF2D3142),
+                          ),
                         ),
                         const SizedBox(height: 4),
-                        Text('Ready to learn today?', style: TextStyle(fontSize: 14, color: Colors.grey.shade600)),
+                        Text(
+                          'Ready to learn today?',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey.shade600,
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -103,19 +113,19 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               const SizedBox(height: 30),
               
-              // Featured Banner
+              // Featured Banner with Image
               Container(
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
                   gradient: const LinearGradient(
-                    colors: [Color(0xFF6C63FF), Color(0xFF8B5CF6)],
+                    colors: [Color(0xFF4ECDC4), Color(0xFF44A08D)],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
                   borderRadius: BorderRadius.circular(20),
                   boxShadow: [
                     BoxShadow(
-                      color: const Color(0xFF6C63FF).withOpacity(0.3),
+                      color: const Color(0xFF4ECDC4).withOpacity(0.3),
                       blurRadius: 15,
                       offset: const Offset(0, 8),
                     ),
@@ -124,36 +134,81 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: Row(
                   children: [
                     Expanded(
+                      flex: 3,
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text('Continue Learning', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white)),
+                          const Text(
+                            'Continue Learning',
+                            style: TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
                           const SizedBox(height: 8),
                           Text(
-                            _stats['enrolled']! > 0 ? 'You have ${_stats['enrolled']} active courses' : 'Start your learning journey',
-                            style: const TextStyle(fontSize: 14, color: Colors.white70),
+                            _stats['enrolled']! > 0 
+                                ? 'You have ${_stats['enrolled']} active courses'
+                                : 'Start your learning journey',
+                            style: const TextStyle(
+                              fontSize: 14,
+                              color: Colors.white70,
+                            ),
                           ),
                           const SizedBox(height: 16),
                           ElevatedButton(
                             onPressed: () => Navigator.pushNamed(context, '/courses'),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: Colors.white,
-                              foregroundColor: const Color(0xFF6C63FF),
-                              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                              foregroundColor: const Color(0xFF4ECDC4),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 24,
+                                vertical: 12,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
                             ),
                             child: const Text('View Courses'),
                           ),
                         ],
                       ),
                     ),
-                    const Icon(Icons.auto_stories_rounded, size: 80, color: Colors.white24),
+                    Expanded(
+                      flex: 2,
+                      child: Container(
+                        height: 120,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Image.asset(
+                          'assets/images/student_learning.jpg', // ADD THIS IMAGE
+                          fit: BoxFit.contain,
+                          errorBuilder: (context, error, stackTrace) {
+                            return const Icon(
+                              Icons.auto_stories_rounded,
+                              size: 80,
+                              color: Colors.white24,
+                            );
+                          },
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               ),
               const SizedBox(height: 30),
               
               // Quick Access
-              const Text('Quick Access', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFF2D3142))),
+              const Text(
+                'Quick Access',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF2D3142),
+                ),
+              ),
               const SizedBox(height: 16),
               
               GridView.count(
@@ -164,43 +219,115 @@ class _HomeScreenState extends State<HomeScreen> {
                 mainAxisSpacing: 16,
                 childAspectRatio: 1.1,
                 children: [
-                  FeatureCard(
+                  _buildFeatureCardWithImage(
                     title: 'My Courses',
-                    icon: Icons.school_rounded,
+                    imagePath: 'assets/images/my_courses.jpg',
                     color: const Color(0xFF6C63FF),
                     onTap: () => Navigator.pushNamed(context, '/courses'),
                   ),
-                  FeatureCard(
+                  _buildFeatureCardWithImage(
                     title: 'Assignments',
-                    icon: Icons.assignment_rounded,
-                    color: const Color(0xFFF59E0B),
+                    imagePath: 'assets/images/assignments.jpg', 
+                    color: const Color(0xFFFFB800),
                     onTap: () => Navigator.pushNamed(context, '/assignments'),
                   ),
                 ],
               ),
               const SizedBox(height: 30),
               
-              // Stats Section - SMALLER SIZE
-              const Text('Your Stats', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFF2D3142))),
+              // Stats Section
+              const Text(
+                'Your Status',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF2D3142),
+                ),
+              ),
               const SizedBox(height: 16),
               Row(
                 children: [
-                  Expanded(child: _buildStatCard('Enrolled', '${_stats['enrolled']}', Icons.book_rounded, const Color(0xFF6C63FF))),
+                  Expanded(
+                    child: _buildStatCard(
+                      'Enrolled',
+                      '${_stats['enrolled']}',
+                      Icons.book_rounded,
+                      const Color(0xFF6C63FF),
+                    ),
+                  ),
                   const SizedBox(width: 12),
-                  Expanded(child: _buildStatCard('Completed', '${_stats['completed']}', Icons.check_circle_rounded, const Color(0xFF10B981))),
+                  Expanded(
+                    child: _buildStatCard(
+                      'Completed',
+                      '${_stats['completed']}',
+                      Icons.check_circle_rounded,
+                      const Color(0xFF10B981),
+                    ),
+                  ),
                 ],
               ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(child: _buildStatCard('Hours', '${_stats['hours']}', Icons.access_time_rounded, const Color(0xFFF59E0B))),
-                  const SizedBox(width: 12),
-                  Expanded(child: _buildStatCard('Avg Score', '85%', Icons.star_rounded, const Color(0xFFEC4899))),
-                ],
-              ),
-              const SizedBox(height: 100), // Space for bottom nav
+              const SizedBox(height: 100),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFeatureCardWithImage({
+    required String title,
+    required String imagePath,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.grey.shade200,
+              blurRadius: 10,
+              offset: const Offset(0, 5),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              width: 80,
+              height: 80,
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.1),
+                shape: BoxShape.circle,
+              ),
+              child: Image.asset(
+                imagePath,
+                fit: BoxFit.contain,
+                errorBuilder: (context, error, stackTrace) {
+                  return Icon(
+                    Icons.school_rounded,
+                    size: 40,
+                    color: color,
+                  );
+                },
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              title,
+              style: const TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF2D3142),
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
         ),
       ),
     );
@@ -209,20 +336,11 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color(0xFFF8F9FA),
       body: SafeArea(
         child: _isLoading
             ? const Center(child: CircularProgressIndicator())
-            : IndexedStack(
-                index: _currentIndex,
-                children: [
-                  _buildHomeContent(),
-                  Navigator(
-                    onGenerateRoute: (settings) => MaterialPageRoute(
-                      builder: (context) => const ProfileScreenWrapper(),
-                    ),
-                  ),
-                ],
-              ),
+            : _buildHomeContent(),
       ),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
@@ -254,7 +372,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildNavItem(IconData icon, String label, int index) {
     final isSelected = _currentIndex == index;
-    final color = isSelected ? const Color(0xFF6C63FF) : Colors.grey.shade600;
+    final color = isSelected ? const Color(0xFF4ECDC4) : Colors.grey.shade600;
     
     return GestureDetector(
       onTap: () {
@@ -271,7 +389,7 @@ class _HomeScreenState extends State<HomeScreen> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
         decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFF6C63FF).withOpacity(0.1) : Colors.transparent,
+          color: isSelected ? const Color(0xFF4ECDC4).withOpacity(0.1) : Colors.transparent,
           borderRadius: BorderRadius.circular(12),
         ),
         child: Column(
@@ -295,24 +413,31 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildStatCard(String label, String value, IconData icon, Color color) {
     return Container(
-      padding: const EdgeInsets.all(16), // REDUCED from 20
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(color: color.withOpacity(0.3)),
       ),
       child: Column(
         children: [
-          Icon(icon, color: color, size: 28), // REDUCED from 32
+          Icon(icon, color: color, size: 28),
           const SizedBox(height: 8),
           Text(
             value,
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: color), // REDUCED from 24
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: color,
+            ),
           ),
           const SizedBox(height: 4),
           Text(
             label,
-            style: TextStyle(fontSize: 12, color: Colors.grey.shade700), // REDUCED from 14
+            style: TextStyle(
+              fontSize: 12,
+              color: Colors.grey.shade700,
+            ),
             textAlign: TextAlign.center,
           ),
         ],
@@ -321,12 +446,11 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 }
 
-// Wrapper for profile screen
 class ProfileScreenWrapper extends StatelessWidget {
   const ProfileScreenWrapper({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return Container(); // Profile is accessed via route
+    return Container();
   }
 }

@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../services/auth_service.dart';
 import '../../services/firestore_service.dart';
-import '../../widgets/feature_card.dart';
 
 class TeacherHomeScreen extends StatefulWidget {
   const TeacherHomeScreen({super.key});
@@ -106,7 +105,7 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> {
               ),
               const SizedBox(height: 30),
               
-              // Featured Banner
+              // Featured Banner with Image
               Container(
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
@@ -127,6 +126,7 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> {
                 child: Row(
                   children: [
                     Expanded(
+                      flex: 3,
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -157,8 +157,11 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> {
                               backgroundColor: Colors.white,
                               foregroundColor: const Color(0xFF6C63FF),
                               padding: const EdgeInsets.symmetric(
-                                horizontal: 24,
+                                horizontal: 18,
                                 vertical: 12,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
                               ),
                             ),
                             child: const Text('Manage Courses'),
@@ -166,10 +169,22 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> {
                         ],
                       ),
                     ),
-                    const Icon(
-                      Icons.book_rounded,
-                      size: 80,
-                      color: Colors.white24,
+                    Expanded(
+                      flex: 2,
+                      child: Container(
+                        height: 120,
+                        child: Image.asset(
+                          'assets/images/teacher_illustration.jpg', // ADD THIS IMAGE
+                          fit: BoxFit.contain,
+                          errorBuilder: (context, error, stackTrace) {
+                            return const Icon(
+                              Icons.book_rounded,
+                              size: 80,
+                              color: Colors.white24,
+                            );
+                          },
+                        ),
+                      ),
                     ),
                   ],
                 ),
@@ -187,7 +202,7 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> {
               ),
               const SizedBox(height: 16),
               
-              // Feature Cards Grid
+              // Feature Cards Grid with Images
               GridView.count(
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
@@ -196,17 +211,17 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> {
                 mainAxisSpacing: 16,
                 childAspectRatio: 1.1,
                 children: [
-                  FeatureCard(
+                  _buildFeatureCardWithImage(
                     title: 'My Courses',
-                    icon: Icons.school_rounded,
+                    imagePath: 'assets/images/my_courses.jpg',
                     color: const Color(0xFF6C63FF),
                     onTap: () {
                       Navigator.pushNamed(context, '/teacher-courses');
                     },
                   ),
-                  FeatureCard(
+                  _buildFeatureCardWithImage(
                     title: 'Create Course',
-                    icon: Icons.add_circle_rounded,
+                    imagePath: 'assets/images/create_course.jpg', // ADD THIS IMAGE
                     color: const Color(0xFF10B981),
                     onTap: () {
                       Navigator.pushNamed(context, '/create-course');
@@ -247,9 +262,68 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> {
                   ),
                 ],
               ),
-              const SizedBox(height: 100), // Space for bottom nav
+              const SizedBox(height: 100),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFeatureCardWithImage({
+    required String title,
+    required String imagePath,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.grey.shade200,
+              blurRadius: 10,
+              offset: const Offset(0, 5),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              width: 80,
+              height: 80,
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.1),
+                shape: BoxShape.circle,
+              ),
+              child: Image.asset(
+                imagePath,
+                fit: BoxFit.contain,
+                errorBuilder: (context, error, stackTrace) {
+                  return Icon(
+                    Icons.school_rounded,
+                    size: 40,
+                    color: color,
+                  );
+                },
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              title,
+              style: const TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF2D3142),
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
         ),
       ),
     );
@@ -258,6 +332,7 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color(0xFFF8F9FA),
       body: SafeArea(
         child: _isLoading
             ? const Center(child: CircularProgressIndicator())
@@ -334,7 +409,7 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> {
 
   Widget _buildStatCard(String label, String value, IconData icon, Color color) {
     return Container(
-      padding: const EdgeInsets.all(16), // SMALLER SIZE
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: color.withOpacity(0.1),
         borderRadius: BorderRadius.circular(16),

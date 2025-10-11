@@ -13,6 +13,7 @@ class AssignmentsScreen extends StatefulWidget {
 class _AssignmentsScreenState extends State<AssignmentsScreen> {
   final FirestoreService _firestoreService = FirestoreService();
   List<Assignment> _assignments = [];
+  Map<String, Submission?> _submissions = {};
   bool _isLoading = true;
   String _selectedFilter = 'All';
 
@@ -27,15 +28,37 @@ class _AssignmentsScreenState extends State<AssignmentsScreen> {
     
     try {
       final assignments = await _firestoreService.getUserAssignments();
+      
+      // Load submission status for each assignment
+      Map<String, Submission?> submissions = {};
+      for (var assignment in assignments) {
+        final status = await _firestoreService.getSubmissionStatus(assignment.id);
+        // Store status in assignment object for easier access
+        assignment = Assignment(
+          id: assignment.id,
+          courseId: assignment.courseId,
+          title: assignment.title,
+          description: assignment.description,
+          dueDate: assignment.dueDate,
+          totalMarks: assignment.totalMarks,
+          createdBy: assignment.createdBy,
+          status: status ?? 'pending',
+        );
+        submissions[assignment.id] = null; // We'll load full submission details if needed
+      }
+      
       if (mounted) {
         setState(() {
           _assignments = assignments;
+          _submissions = submissions;
           _isLoading = false;
         });
       }
     } catch (e) {
       print('Error loading assignments: $e');
-      setState(() => _isLoading = false);
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
@@ -156,7 +179,7 @@ class _AssignmentsScreenState extends State<AssignmentsScreen> {
 
   Widget _buildAssignmentCard(Assignment assignment) {
     final daysUntilDue = assignment.dueDate.difference(DateTime.now()).inDays;
-    final isOverdue = daysUntilDue < 0;
+    final isOverdue = daysUntilDue < 0 && assignment.status == 'pending';
     final statusColor = _getStatusColor(assignment.status);
 
     return Container(
@@ -336,7 +359,7 @@ class _AssignmentsScreenState extends State<AssignmentsScreen> {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) => Container(
-        height: MediaQuery.of(context).size.height * 0.7,
+        height: MediaQuery.of(context).size.height * 0.75,
         decoration: const BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.only(
@@ -444,11 +467,13 @@ class _AssignmentsScreenState extends State<AssignmentsScreen> {
                     if (assignment.status == 'pending')
                       SizedBox(
                         width: double.infinity,
-                        child: ElevatedButton(
+                        child: ElevatedButton.icon(
                           onPressed: () {
                             Navigator.pop(context);
                             _showSubmitDialog(assignment);
                           },
+                          icon: const Icon(Icons.upload_file),
+                          label: const Text('Submit Assignment'),
                           style: ElevatedButton.styleFrom(
                             padding: const EdgeInsets.symmetric(vertical: 16),
                             backgroundColor: const Color(0xFF6C63FF),
@@ -456,13 +481,66 @@ class _AssignmentsScreenState extends State<AssignmentsScreen> {
                               borderRadius: BorderRadius.circular(12),
                             ),
                           ),
-                          child: const Text(
-                            'Submit Assignment',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
+                        ),
+                      )
+                    else if (assignment.status == 'submitted')
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.blue.shade50,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.blue.shade200),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(Icons.info_outline, color: Colors.blue.shade700),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                'Your submission is being reviewed',
+                                style: TextStyle(
+                                  color: Colors.blue.shade900,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
                             ),
-                          ),
+                          ],
+                        ),
+                      )
+                    else if (assignment.status == 'graded')
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.green.shade50,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.green.shade200),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Icon(Icons.grade, color: Colors.green.shade700),
+                                const SizedBox(width: 12),
+                                Text(
+                                  'Assignment Graded',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.green.shade900,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+                            // You can load and display marks here
+                            Text(
+                              'Check your grade and feedback',
+                              style: TextStyle(
+                                color: Colors.green.shade800,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                   ],
@@ -508,46 +586,76 @@ class _AssignmentsScreenState extends State<AssignmentsScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Submit Assignment'),
-        content: TextField(
-          controller: controller,
-          maxLines: 5,
-          decoration: const InputDecoration(
-            hintText: 'Enter your answer or submission link...',
-            border: OutlineInputBorder(),
-          ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'Enter your submission:',
+              style: TextStyle(fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: controller,
+              maxLines: 5,
+              decoration: const InputDecoration(
+                hintText: 'Type your answer or paste your submission link...',
+                border: OutlineInputBorder(),
+              ),
+            ),
+          ],
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: const Text('Cancel'),
           ),
-          ElevatedButton(
+          ElevatedButton.icon(
+            icon: const Icon(Icons.send),
+            label: const Text('Submit'),
             onPressed: () async {
               if (controller.text.trim().isEmpty) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Please enter your submission')),
+                  const SnackBar(content: Text('⚠️ Please enter your submission')),
                 );
                 return;
               }
               
               Navigator.pop(context);
               
+              // Show loading
+              showDialog(
+                context: context,
+                barrierDismissible: false,
+                builder: (context) => const Center(
+                  child: CircularProgressIndicator(),
+                ),
+              );
+              
               final success = await _firestoreService.submitAssignment(
                 assignment.id,
                 controller.text.trim(),
               );
               
+              // Hide loading
+              Navigator.pop(context);
+              
               if (success && mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
-                    content: Text('Assignment submitted successfully!'),
+                    content: Text('✅ Assignment submitted successfully!'),
                     backgroundColor: Colors.green,
                   ),
                 );
                 _loadAssignments();
+              } else if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('❌ Failed to submit. Please try again.'),
+                    backgroundColor: Colors.red,
+                  ),
+                );
               }
             },
-            child: const Text('Submit'),
           ),
         ],
       ),

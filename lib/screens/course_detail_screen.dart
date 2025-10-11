@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../services/firestore_service.dart';
+import '../services/auth_service.dart';
 import '../models/course_model.dart';
 import 'package:intl/intl.dart';
+import 'teacher/teacher_assignments_screen.dart';
 
 class CourseDetailScreen extends StatefulWidget {
   final Course course;
@@ -16,25 +19,42 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
   final FirestoreService _firestoreService = FirestoreService();
   bool _isEnrolled = false;
   bool _isLoading = false;
+  bool _isTeacher = false;
   UserEnrollment? _enrollment;
   List<Assignment> _assignments = [];
 
   @override
   void initState() {
     super.initState();
-    _checkEnrollment();
+    _checkUserRole();
     _loadAssignments();
   }
 
-  Future<void> _checkEnrollment() async {
-    final enrolled = await _firestoreService.isEnrolledInCourse(widget.course.id);
-    final enrollment = await _firestoreService.getCourseEnrollment(widget.course.id);
+  Future<void> _checkUserRole() async {
+    final authService = Provider.of<AuthService>(context, listen: false);
+    final userData = await _firestoreService.getUserData();
+    final userRole = userData?['role'] ?? 'student';
+    
+    // Check if current user is the course instructor
+    final isInstructor = widget.course.instructorId == authService.currentUser?.uid;
     
     if (mounted) {
       setState(() {
-        _isEnrolled = enrolled;
-        _enrollment = enrollment;
+        _isTeacher = (userRole == 'teacher') || isInstructor;
       });
+    }
+
+    // Only check enrollment if user is a student
+    if (!_isTeacher) {
+      final enrolled = await _firestoreService.isEnrolledInCourse(widget.course.id);
+      final enrollment = await _firestoreService.getCourseEnrollment(widget.course.id);
+      
+      if (mounted) {
+        setState(() {
+          _isEnrolled = enrolled;
+          _enrollment = enrollment;
+        });
+      }
     }
   }
 
@@ -51,7 +71,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
   }
 
   Future<void> _handleEnroll() async {
-    if (_isLoading) return;
+    if (_isLoading || _isTeacher) return;
     
     setState(() => _isLoading = true);
 
@@ -69,7 +89,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
           ),
         );
         
-        await _checkEnrollment();
+        await _checkUserRole();
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -138,25 +158,61 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
       body: CustomScrollView(
         slivers: [
           SliverAppBar(
-            expandedHeight: 200,
+            expandedHeight: 250,
             pinned: true,
             flexibleSpace: FlexibleSpaceBar(
               title: Text(
                 widget.course.title,
                 style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
               ),
-              background: Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [color, color.withOpacity(0.7)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                ),
-                child: Center(
-                  child: Icon(icon, size: 80, color: Colors.white.withOpacity(0.3)),
-                ),
-              ),
+              background: widget.course.imageUrl != null && widget.course.imageUrl!.isNotEmpty
+                  ? Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        Image.network(
+                          widget.course.imageUrl!,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) {
+                            return Container(
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  colors: [color, color.withOpacity(0.7)],
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                ),
+                              ),
+                              child: Center(
+                                child: Icon(icon, size: 80, color: Colors.white.withOpacity(0.3)),
+                              ),
+                            );
+                          },
+                        ),
+                        Container(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [
+                                Colors.black.withOpacity(0.6),
+                                Colors.transparent,
+                              ],
+                              begin: Alignment.bottomCenter,
+                              end: Alignment.topCenter,
+                            ),
+                          ),
+                        ),
+                      ],
+                    )
+                  : Container(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [color, color.withOpacity(0.7)],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                      ),
+                      child: Center(
+                        child: Icon(icon, size: 80, color: Colors.white.withOpacity(0.3)),
+                      ),
+                    ),
             ),
           ),
           
@@ -166,16 +222,32 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: color.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      widget.course.level,
-                      style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 12),
-                    ),
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: color.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Text(
+                          widget.course.level,
+                          style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 12),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade100,
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Text(
+                          widget.course.category,
+                          style: TextStyle(color: Colors.grey.shade700, fontWeight: FontWeight.bold, fontSize: 12),
+                        ),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 20),
                   
@@ -234,8 +306,16 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
                   ),
                   const SizedBox(height: 24),
                   
-                  // Progress (if enrolled)
-                  if (_isEnrolled) ...[
+                  // TEACHER VIEW - Manage Course
+                  if (_isTeacher) ...[
+                    const Text('Manage Course', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 16),
+                    _buildTeacherActions(),
+                    const SizedBox(height: 24),
+                  ],
+                  
+                  // STUDENT VIEW - Progress (if enrolled)
+                  if (!_isTeacher && _isEnrolled) ...[
                     const Text('Your Progress', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
                     const SizedBox(height: 16),
                     Container(
@@ -285,7 +365,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
                   ],
                   
                   // Assignments
-                  if (_isEnrolled && _assignments.isNotEmpty) ...[
+                  if (_assignments.isNotEmpty) ...[
                     const Text('Course Assignments', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
                     const SizedBox(height: 16),
                     ..._assignments.map((assignment) => _buildAssignmentCard(assignment, color)),
@@ -300,15 +380,130 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
         ],
       ),
       
-      floatingActionButton: _isEnrolled ? null : FloatingActionButton.extended(
-        onPressed: _isLoading ? null : _handleEnroll,
-        icon: _isLoading
-            ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, valueColor: AlwaysStoppedAnimation<Color>(Colors.white)))
-            : const Icon(Icons.check_circle_rounded),
-        label: Text(_isLoading ? 'Enrolling...' : 'Enroll Now'),
-        backgroundColor: color,
-      ),
+      // ONLY SHOW ENROLL BUTTON FOR STUDENTS WHO ARE NOT ENROLLED
+      floatingActionButton: (!_isTeacher && !_isEnrolled) 
+          ? FloatingActionButton.extended(
+              onPressed: _isLoading ? null : _handleEnroll,
+              icon: _isLoading
+                  ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, valueColor: AlwaysStoppedAnimation<Color>(Colors.white)))
+                  : const Icon(Icons.check_circle_rounded),
+              label: Text(_isLoading ? 'Enrolling...' : 'Enroll Now'),
+              backgroundColor: color,
+            )
+          : null,
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+    );
+  }
+
+  Widget _buildTeacherActions() {
+    return Column(
+      children: [
+        _buildActionButton(
+          icon: Icons.video_library_rounded,
+          title: 'Manage Content',
+          subtitle: 'Add or edit course lessons',
+          color: const Color(0xFF6C63FF),
+          onTap: () {
+            Navigator.pushNamed(context, '/course-learning', arguments: widget.course);
+          },
+        ),
+        const SizedBox(height: 12),
+        _buildActionButton(
+          icon: Icons.assignment_rounded,
+          title: 'Manage Assignments',
+          subtitle: 'Create, edit and grade assignments',
+          color: const Color(0xFFF59E0B),
+          onTap: () {
+            // Navigate to Teacher Assignments Screen
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => TeacherAssignmentsScreen(course: widget.course),
+              ),
+            );
+          },
+        ),
+        const SizedBox(height: 12),
+        _buildActionButton(
+          icon: Icons.people_rounded,
+          title: 'View Students',
+          subtitle: '${widget.course.students} enrolled students',
+          color: const Color(0xFF10B981),
+          onTap: () {
+            Navigator.pushNamed(context, '/course-students', arguments: widget.course);
+          },
+        ),
+        const SizedBox(height: 12),
+        _buildActionButton(
+          icon: Icons.edit_rounded,
+          title: 'Edit Course',
+          subtitle: 'Update course details',
+          color: const Color(0xFFEC4899),
+          onTap: () {
+            Navigator.pushNamed(context, '/edit-course', arguments: widget.course);
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget _buildActionButton({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return Material(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            border: Border.all(color: Colors.grey.shade200),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(icon, color: color, size: 24),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      subtitle,
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: Colors.grey.shade600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(Icons.chevron_right, color: Colors.grey.shade400),
+            ],
+          ),
+        ),
+      ),
     );
   }
 

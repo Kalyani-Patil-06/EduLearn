@@ -13,7 +13,7 @@ class Course {
   final String level;
   final String iconName;
   final String colorValue;
-  final String? imageUrl;
+  final String? imageUrl; // Optional - can be null
 
   Course({
     required this.id,
@@ -28,7 +28,7 @@ class Course {
     required this.level,
     required this.iconName,
     required this.colorValue,
-    this.imageUrl,
+    this.imageUrl, // Optional
   });
 
   Map<String, dynamic> toMap() {
@@ -45,7 +45,7 @@ class Course {
       'level': level,
       'iconName': iconName,
       'colorValue': colorValue,
-      'imageUrl': imageUrl,
+      'imageUrl': imageUrl, // Can be null
       'updatedAt': FieldValue.serverTimestamp(),
     };
   }
@@ -63,8 +63,8 @@ class Course {
       category: map['category'] ?? '',
       level: map['level'] ?? '',
       iconName: map['iconName'] ?? 'school',
-      colorValue: map['colorValue'] ?? 'FF6C63FF',
-      imageUrl: map['imageUrl'],
+      colorValue: map['colorValue'] ?? '6C63FF',
+      imageUrl: map['imageUrl'], // Can be null
     );
   }
 

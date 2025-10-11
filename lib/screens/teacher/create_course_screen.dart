@@ -16,13 +16,15 @@ class _CreateCourseScreenState extends State<CreateCourseScreen> {
   final _titleController = TextEditingController();
   final _descriptionController = TextEditingController();
   final _durationController = TextEditingController();
-  final _iconController = TextEditingController();
-  final _colorController = TextEditingController();
   final FirestoreService _firestoreService = FirestoreService();
   
   bool _isLoading = false;
   String _selectedCategory = 'Programming';
   String _selectedLevel = 'Beginner';
+  
+  // Color and Icon selection
+  String _selectedColorHex = '6C63FF'; // Default purple
+  String _selectedIcon = 'school';
 
   final List<String> _categories = [
     'Programming',
@@ -34,14 +36,40 @@ class _CreateCourseScreenState extends State<CreateCourseScreen> {
 
   final List<String> _levels = ['Beginner', 'Intermediate', 'Advanced'];
 
+  // Available colors for courses
+  final Map<String, Color> _availableColors = {
+    'Purple': const Color(0xFF6C63FF),
+    'Blue': const Color(0xFF2196F3),
+    'Green': const Color(0xFF4CAF50),
+    'Orange': const Color(0xFFFF9800),
+    'Red': const Color(0xFFF44336),
+    'Pink': const Color(0xFFE91E63),
+    'Teal': const Color(0xFF009688),
+    'Indigo': const Color(0xFF3F51B5),
+  };
+
+  // Available icons for courses
+  final Map<String, IconData> _availableIcons = {
+    'school': Icons.school_rounded,
+    'code': Icons.code_rounded,
+    'design': Icons.design_services_rounded,
+    'business': Icons.business_center_rounded,
+    'science': Icons.science_rounded,
+    'math': Icons.functions_rounded,
+    'book': Icons.menu_book_rounded,
+    'computer': Icons.computer_rounded,
+  };
+
   @override
   void dispose() {
     _titleController.dispose();
     _descriptionController.dispose();
     _durationController.dispose();
-    _iconController.dispose();
-    _colorController.dispose();
     super.dispose();
+  }
+
+  String _colorToHex(Color color) {
+    return color.value.toRadixString(16).substring(2).toUpperCase();
   }
 
   Future<void> _handleCreate() async {
@@ -49,49 +77,68 @@ class _CreateCourseScreenState extends State<CreateCourseScreen> {
 
     setState(() => _isLoading = true);
 
-    final userData = await _firestoreService.getUserData();
-    
-    Course newCourse = Course(
-      id: '',
-      title: _titleController.text.trim(),
-      description: _descriptionController.text.trim(),
-      instructor: userData?['name'] ?? 'Teacher',
-      instructorId: _firestoreService.currentUserId ?? '',
-      duration: _durationController.text.trim(),
-      lessons: 0,
-      students: 0,
-      category: _selectedCategory,
-      level: _selectedLevel,
-      iconName: _iconController.text.trim().isEmpty ? 'school' : _iconController.text.trim(),
-      colorValue: _colorController.text.trim().isEmpty ? '6C63FF' : _colorController.text.trim().replaceAll('#', ''),
-    );
-
-    final courseId = await _firestoreService.createCourse(newCourse);
-
-    setState(() => _isLoading = false);
-
-    if (!mounted) return;
-
-    if (courseId != null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Course created successfully!'),
-          backgroundColor: Colors.green,
-        ),
+    try {
+      final userData = await _firestoreService.getUserData();
+      
+      Course newCourse = Course(
+        id: '',
+        title: _titleController.text.trim(),
+        description: _descriptionController.text.trim(),
+        instructor: userData?['name'] ?? 'Teacher',
+        instructorId: _firestoreService.currentUserId ?? '',
+        duration: _durationController.text.trim(),
+        lessons: 0,
+        students: 0,
+        category: _selectedCategory,
+        level: _selectedLevel,
+        iconName: _selectedIcon,
+        colorValue: _selectedColorHex,
+        imageUrl: null, // No image
       );
-      Navigator.pop(context);
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Failed to create course'),
-          backgroundColor: Colors.red,
-        ),
-      );
+
+      final courseId = await _firestoreService.createCourse(newCourse);
+
+      setState(() => _isLoading = false);
+
+      if (!mounted) return;
+
+      if (courseId != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('✅ Course created successfully!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        Navigator.pop(context);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('❌ Failed to create course'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      setState(() => _isLoading = false);
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final selectedColor = _availableColors.values.firstWhere(
+      (color) => _colorToHex(color) == _selectedColorHex,
+      orElse: () => const Color(0xFF6C63FF),
+    );
+
     return Scaffold(
       appBar: AppBar(
         title: const Text(
@@ -110,11 +157,193 @@ class _CreateCourseScreenState extends State<CreateCourseScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // Color & Icon Selection Preview
+              const Text(
+                'Course Appearance',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF2D3142),
+                ),
+              ),
+              const SizedBox(height: 12),
+              
+              // Preview Card
+              Container(
+                height: 150,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [selectedColor, selectedColor.withOpacity(0.7)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: selectedColor.withOpacity(0.3),
+                      blurRadius: 15,
+                      offset: const Offset(0, 8),
+                    ),
+                  ],
+                ),
+                child: Stack(
+                  children: [
+                    Positioned(
+                      right: -20,
+                      top: -20,
+                      child: Icon(
+                        _availableIcons[_selectedIcon]!,
+                        size: 120,
+                        color: Colors.white.withOpacity(0.2),
+                      ),
+                    ),
+                    const Padding(
+                      padding: EdgeInsets.all(16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Preview',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          SizedBox(height: 8),
+                          Text(
+                            'This is how your course card will look',
+                            style: TextStyle(
+                              color: Colors.white70,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 24),
+
+              // Color Selection
+              const Text(
+                'Select Color',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF2D3142),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 12,
+                runSpacing: 12,
+                children: _availableColors.entries.map((entry) {
+                  final isSelected = _colorToHex(entry.value) == _selectedColorHex;
+                  return GestureDetector(
+                    onTap: () {
+                      setState(() {
+                        _selectedColorHex = _colorToHex(entry.value);
+                      });
+                    },
+                    child: Container(
+                      width: 70,
+                      height: 70,
+                      decoration: BoxDecoration(
+                        color: entry.value,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: isSelected ? Colors.black : Colors.transparent,
+                          width: 3,
+                        ),
+                        boxShadow: [
+                          if (isSelected)
+                            BoxShadow(
+                              color: entry.value.withOpacity(0.5),
+                              blurRadius: 10,
+                              offset: const Offset(0, 4),
+                            ),
+                        ],
+                      ),
+                      child: Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            if (isSelected)
+                              const Icon(
+                                Icons.check_circle,
+                                color: Colors.white,
+                                size: 24,
+                              ),
+                            const SizedBox(height: 4),
+                            Text(
+                              entry.key,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+              const SizedBox(height: 24),
+
+              // Icon Selection
+              const Text(
+                'Select Icon',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF2D3142),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 12,
+                runSpacing: 12,
+                children: _availableIcons.entries.map((entry) {
+                  final isSelected = entry.key == _selectedIcon;
+                  return GestureDetector(
+                    onTap: () {
+                      setState(() {
+                        _selectedIcon = entry.key;
+                      });
+                    },
+                    child: Container(
+                      width: 70,
+                      height: 70,
+                      decoration: BoxDecoration(
+                        color: isSelected
+                            ? selectedColor.withOpacity(0.2)
+                            : Colors.grey.shade100,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: isSelected ? selectedColor : Colors.grey.shade300,
+                          width: 2,
+                        ),
+                      ),
+                      child: Icon(
+                        entry.value,
+                        size: 36,
+                        color: isSelected ? selectedColor : Colors.grey.shade600,
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+              const SizedBox(height: 30),
+
               // Title Field
               CustomTextField(
                 controller: _titleController,
                 label: 'Course Title',
-                hint: 'Enter course title',
+                hint: 'e.g., Complete Flutter Development',
                 prefixIcon: Icons.title,
                 validator: (value) {
                   if (value == null || value.isEmpty) {
@@ -142,7 +371,7 @@ class _CreateCourseScreenState extends State<CreateCourseScreen> {
                 controller: _descriptionController,
                 maxLines: 4,
                 decoration: InputDecoration(
-                  hintText: 'Enter course description',
+                  hintText: 'Describe what students will learn...',
                   hintStyle: TextStyle(color: Colors.grey.shade400),
                   filled: true,
                   fillColor: Colors.grey.shade50,
@@ -156,7 +385,11 @@ class _CreateCourseScreenState extends State<CreateCourseScreen> {
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: Color(0xFF6C63FF), width: 2),
+                    borderSide: const BorderSide(color: Color(0xFF4ECDC4), width: 2),
+                  ),
+                  errorBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(color: Colors.red),
                   ),
                 ),
                 validator: (value) {
@@ -209,6 +442,11 @@ class _CreateCourseScreenState extends State<CreateCourseScreen> {
                     borderRadius: BorderRadius.circular(12),
                     borderSide: BorderSide(color: Colors.grey.shade200),
                   ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(color: Color(0xFF4ECDC4), width: 2),
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
                 ),
                 items: _categories.map((category) {
                   return DropdownMenuItem(
@@ -245,6 +483,11 @@ class _CreateCourseScreenState extends State<CreateCourseScreen> {
                     borderRadius: BorderRadius.circular(12),
                     borderSide: BorderSide(color: Colors.grey.shade200),
                   ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(color: Color(0xFF4ECDC4), width: 2),
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
                 ),
                 items: _levels.map((level) {
                   return DropdownMenuItem(
@@ -256,24 +499,6 @@ class _CreateCourseScreenState extends State<CreateCourseScreen> {
                   setState(() => _selectedLevel = value!);
                 },
               ),
-              const SizedBox(height: 20),
-
-              // Icon Name Field (Optional - for advanced users)
-              CustomTextField(
-                controller: _iconController,
-                label: 'Icon Name (Optional)',
-                hint: 'e.g., school, code, design',
-                prefixIcon: Icons.image_outlined,
-              ),
-              const SizedBox(height: 20),
-
-              // Color Code Field (Optional - for advanced users)
-              CustomTextField(
-                controller: _colorController,
-                label: 'Color Code (Optional)',
-                hint: 'e.g., 6C63FF or #6C63FF',
-                prefixIcon: Icons.color_lens_outlined,
-              ),
               const SizedBox(height: 40),
 
               // Create Button
@@ -281,6 +506,7 @@ class _CreateCourseScreenState extends State<CreateCourseScreen> {
                 text: 'Create Course',
                 isLoading: _isLoading,
                 onPressed: _handleCreate,
+                backgroundColor: const Color(0xFF4ECDC4),
               ),
               const SizedBox(height: 20),
             ],
