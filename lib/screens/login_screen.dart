@@ -42,7 +42,13 @@ class _LoginScreenState extends State<LoginScreen> {
     if (!mounted) return;
 
     if (result['success']) {
-      Navigator.pushReplacementNamed(context, '/home');
+      // Navigate based on role
+      String role = result['role'] ?? 'student';
+      if (role == 'teacher') {
+        Navigator.pushReplacementNamed(context, '/teacher-home');
+      } else {
+        Navigator.pushReplacementNamed(context, '/home');
+      }
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -153,7 +159,6 @@ class _LoginScreenState extends State<LoginScreen> {
                   alignment: Alignment.centerRight,
                   child: TextButton(
                     onPressed: () {
-                      // TODO: Implement forgot password
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
                           content: Text('Forgot password feature coming soon!'),

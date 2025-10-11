@@ -8,37 +8,64 @@ class AuthService extends ChangeNotifier {
 
   User? get currentUser => _auth.currentUser;
   bool get isAuthenticated => currentUser != null;
+  
+  String? _userRole;
+  String? get userRole => _userRole;
 
-  // Stream to listen to authentication state changes
   Stream<User?> get authStateChanges => _auth.authStateChanges();
+
+  // Initialize and get user role
+  Future<void> initialize() async {
+    if (currentUser != null) {
+      await _loadUserRole();
+    }
+  }
+
+  Future<void> _loadUserRole() async {
+    if (currentUser == null) return;
+    
+    try {
+      final doc = await _firestore.collection('users').doc(currentUser!.uid).get();
+      if (doc.exists) {
+        _userRole = doc.data()?['role'] ?? 'student';
+        notifyListeners();
+      }
+    } catch (e) {
+      debugPrint('Error loading user role: $e');
+    }
+  }
 
   // Register new user
   Future<Map<String, dynamic>> register({
     required String name,
     required String email,
     required String password,
-    required String studentId,
+    String? studentId,
+    required String role, // 'student' or 'teacher'
   }) async {
     try {
-      // Create user in Firebase Authentication
       UserCredential userCredential = await _auth.createUserWithEmailAndPassword(
         email: email.trim(),
         password: password,
       );
 
-      // Store additional user data in Firestore
-      await _firestore.collection('users').doc(userCredential.user!.uid).set({
+      Map<String, dynamic> userData = {
         'name': name.trim(),
         'email': email.trim(),
-        'studentId': studentId.trim(),
+        'role': role,
         'createdAt': FieldValue.serverTimestamp(),
-        'enrolledCourses': [],
-      });
+      };
 
-      // Update display name
+      if (role == 'student' && studentId != null) {
+        userData['studentId'] = studentId.trim();
+      }
+
+      await _firestore.collection('users').doc(userCredential.user!.uid).set(userData);
       await userCredential.user!.updateDisplayName(name.trim());
 
+      _userRole = role;
       notifyListeners();
+      
       return {'success': true, 'message': 'Registration successful!'};
     } on FirebaseAuthException catch (e) {
       String message = 'Registration failed';
@@ -74,8 +101,9 @@ class AuthService extends ChangeNotifier {
         password: password,
       );
       
-      notifyListeners();
-      return {'success': true, 'message': 'Login successful!'};
+      await _loadUserRole();
+      
+      return {'success': true, 'message': 'Login successful!', 'role': _userRole};
     } on FirebaseAuthException catch (e) {
       String message = 'Login failed';
       
@@ -105,6 +133,7 @@ class AuthService extends ChangeNotifier {
   // Logout user
   Future<void> logout() async {
     await _auth.signOut();
+    _userRole = null;
     notifyListeners();
   }
 
@@ -131,62 +160,29 @@ class AuthService extends ChangeNotifier {
   // Update user profile
   Future<Map<String, dynamic>> updateProfile({
     required String name,
-    required String studentId,
+    String? studentId,
   }) async {
     try {
       if (currentUser == null) {
         return {'success': false, 'message': 'No user logged in'};
       }
 
-      await _firestore.collection('users').doc(currentUser!.uid).update({
+      Map<String, dynamic> updateData = {
         'name': name.trim(),
-        'studentId': studentId.trim(),
         'updatedAt': FieldValue.serverTimestamp(),
-      });
+      };
 
+      if (studentId != null) {
+        updateData['studentId'] = studentId.trim();
+      }
+
+      await _firestore.collection('users').doc(currentUser!.uid).update(updateData);
       await currentUser!.updateDisplayName(name.trim());
       
       notifyListeners();
       return {'success': true, 'message': 'Profile updated successfully!'};
     } catch (e) {
       return {'success': false, 'message': 'Failed to update profile: $e'};
-    }
-  }
-
-  // Enroll in a course
-  Future<void> enrollInCourse(String courseId) async {
-    try {
-      if (currentUser == null) return;
-
-      await _firestore.collection('users').doc(currentUser!.uid).update({
-        'enrolledCourses': FieldValue.arrayUnion([courseId]),
-      });
-      
-      notifyListeners();
-    } catch (e) {
-      debugPrint('Error enrolling in course: $e');
-    }
-  }
-
-  // Check if user is enrolled in a course
-  Future<bool> isEnrolledInCourse(String courseId) async {
-    try {
-      if (currentUser == null) return false;
-
-      DocumentSnapshot doc = await _firestore
-          .collection('users')
-          .doc(currentUser!.uid)
-          .get();
-      
-      if (doc.exists) {
-        Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
-        List enrolledCourses = data['enrolledCourses'] ?? [];
-        return enrolledCourses.contains(courseId);
-      }
-      return false;
-    } catch (e) {
-      debugPrint('Error checking enrollment: $e');
-      return false;
     }
   }
 }

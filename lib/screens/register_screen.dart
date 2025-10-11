@@ -22,6 +22,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   bool _isLoading = false;
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
+  String _selectedRole = 'student'; // 'student' or 'teacher'
 
   @override
   void dispose() {
@@ -43,7 +44,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
       name: _nameController.text,
       email: _emailController.text,
       password: _passwordController.text,
-      studentId: _studentIdController.text,
+      studentId: _selectedRole == 'student' ? _studentIdController.text : null,
+      role: _selectedRole,
     );
 
     setState(() => _isLoading = false);
@@ -59,7 +61,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         ),
       );
-      Navigator.pushReplacementNamed(context, '/home');
+      
+      // Navigate based on role
+      if (_selectedRole == 'teacher') {
+        Navigator.pushReplacementNamed(context, '/teacher-home');
+      } else {
+        Navigator.pushReplacementNamed(context, '/home');
+      }
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -120,6 +128,30 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 32),
+                
+                // Role Selection
+                const Text(
+                  'I am a',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF2D3142),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _buildRoleCard('student', 'Student', Icons.school_rounded),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: _buildRoleCard('teacher', 'Teacher', Icons.person_outline),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 24),
+                
                 // Name Field
                 CustomTextField(
                   controller: _nameController,
@@ -155,23 +187,27 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   },
                 ),
                 const SizedBox(height: 16),
-                // Student ID Field
-                CustomTextField(
-                  controller: _studentIdController,
-                  label: 'Student ID',
-                  hint: 'Enter your student ID',
-                  prefixIcon: Icons.badge_outlined,
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Please enter your student ID';
-                    }
-                    if (value.length < 4) {
-                      return 'Student ID must be at least 4 characters';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 16),
+                
+                // Student ID Field (only for students)
+                if (_selectedRole == 'student') ...[
+                  CustomTextField(
+                    controller: _studentIdController,
+                    label: 'Student ID',
+                    hint: 'Enter your student ID',
+                    prefixIcon: Icons.badge_outlined,
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please enter your student ID';
+                      }
+                      if (value.length < 4) {
+                        return 'Student ID must be at least 4 characters';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                ],
+                
                 // Password Field
                 CustomTextField(
                   controller: _passwordController,
@@ -263,6 +299,44 @@ class _RegisterScreenState extends State<RegisterScreen> {
               ],
             ),
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRoleCard(String role, String label, IconData icon) {
+    final isSelected = _selectedRole == role;
+    return GestureDetector(
+      onTap: () {
+        setState(() => _selectedRole = role);
+      },
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: isSelected ? const Color(0xFF6C63FF).withOpacity(0.1) : Colors.grey.shade50,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: isSelected ? const Color(0xFF6C63FF) : Colors.grey.shade300,
+            width: 2,
+          ),
+        ),
+        child: Column(
+          children: [
+            Icon(
+              icon,
+              size: 40,
+              color: isSelected ? const Color(0xFF6C63FF) : Colors.grey.shade600,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: isSelected ? const Color(0xFF6C63FF) : Colors.grey.shade700,
+              ),
+            ),
+          ],
         ),
       ),
     );

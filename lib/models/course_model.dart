@@ -5,20 +5,22 @@ class Course {
   final String title;
   final String description;
   final String instructor;
+  final String instructorId;
   final String duration;
   final int lessons;
   final int students;
   final String category;
   final String level;
-  final String iconName; // Store icon name as string
-  final String colorValue; // Store color as hex string
-  final String? imageUrl; // Add image URL field (optional)
+  final String iconName;
+  final String colorValue;
+  final String? imageUrl;
 
   Course({
     required this.id,
     required this.title,
     required this.description,
     required this.instructor,
+    required this.instructorId,
     required this.duration,
     required this.lessons,
     required this.students,
@@ -26,16 +28,16 @@ class Course {
     required this.level,
     required this.iconName,
     required this.colorValue,
-    this.imageUrl, // Optional image
+    this.imageUrl,
   });
 
-  // Convert Course to Map for Firestore
   Map<String, dynamic> toMap() {
     return {
       'id': id,
       'title': title,
       'description': description,
       'instructor': instructor,
+      'instructorId': instructorId,
       'duration': duration,
       'lessons': lessons,
       'students': students,
@@ -43,16 +45,18 @@ class Course {
       'level': level,
       'iconName': iconName,
       'colorValue': colorValue,
+      'imageUrl': imageUrl,
+      'updatedAt': FieldValue.serverTimestamp(),
     };
   }
 
-  // Create Course from Firestore document
   factory Course.fromMap(Map<String, dynamic> map, String documentId) {
     return Course(
       id: documentId,
       title: map['title'] ?? '',
       description: map['description'] ?? '',
       instructor: map['instructor'] ?? '',
+      instructorId: map['instructorId'] ?? '',
       duration: map['duration'] ?? '',
       lessons: map['lessons'] ?? 0,
       students: map['students'] ?? 0,
@@ -60,13 +64,61 @@ class Course {
       level: map['level'] ?? '',
       iconName: map['iconName'] ?? 'school',
       colorValue: map['colorValue'] ?? 'FF6C63FF',
+      imageUrl: map['imageUrl'],
     );
   }
 
-  // Create Course from Firestore DocumentSnapshot
   factory Course.fromFirestore(DocumentSnapshot doc) {
     Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
     return Course.fromMap(data, doc.id);
+  }
+}
+
+class Lesson {
+  final String id;
+  final String courseId;
+  final String title;
+  final String description;
+  final String videoUrl;
+  final String duration;
+  final int order;
+
+  Lesson({
+    required this.id,
+    required this.courseId,
+    required this.title,
+    required this.description,
+    required this.videoUrl,
+    required this.duration,
+    required this.order,
+  });
+
+  Map<String, dynamic> toMap() {
+    return {
+      'courseId': courseId,
+      'title': title,
+      'description': description,
+      'videoUrl': videoUrl,
+      'duration': duration,
+      'order': order,
+    };
+  }
+
+  factory Lesson.fromMap(Map<String, dynamic> map, String documentId) {
+    return Lesson(
+      id: documentId,
+      courseId: map['courseId'] ?? '',
+      title: map['title'] ?? '',
+      description: map['description'] ?? '',
+      videoUrl: map['videoUrl'] ?? '',
+      duration: map['duration'] ?? '',
+      order: map['order'] ?? 0,
+    );
+  }
+
+  factory Lesson.fromFirestore(DocumentSnapshot doc) {
+    Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
+    return Lesson.fromMap(data, doc.id);
   }
 }
 
@@ -76,6 +128,7 @@ class UserEnrollment {
   final double progress;
   final int completedLessons;
   final DateTime? lastAccessedAt;
+  final List<String> completedLessonIds;
 
   UserEnrollment({
     required this.courseId,
@@ -83,6 +136,7 @@ class UserEnrollment {
     this.progress = 0.0,
     this.completedLessons = 0,
     this.lastAccessedAt,
+    this.completedLessonIds = const [],
   });
 
   Map<String, dynamic> toMap() {
@@ -94,6 +148,7 @@ class UserEnrollment {
       'lastAccessedAt': lastAccessedAt != null 
           ? Timestamp.fromDate(lastAccessedAt!) 
           : null,
+      'completedLessonIds': completedLessonIds,
     };
   }
 
@@ -106,6 +161,7 @@ class UserEnrollment {
       lastAccessedAt: map['lastAccessedAt'] != null
           ? (map['lastAccessedAt'] as Timestamp).toDate()
           : null,
+      completedLessonIds: List<String>.from(map['completedLessonIds'] ?? []),
     );
   }
 }
@@ -117,7 +173,8 @@ class Assignment {
   final String description;
   final DateTime dueDate;
   final int totalMarks;
-  final String status; // pending, submitted, graded
+  final String createdBy;
+  final String status;
 
   Assignment({
     required this.id,
@@ -126,18 +183,20 @@ class Assignment {
     required this.description,
     required this.dueDate,
     required this.totalMarks,
+    required this.createdBy,
     this.status = 'pending',
   });
 
   Map<String, dynamic> toMap() {
     return {
-      'id': id,
       'courseId': courseId,
       'title': title,
       'description': description,
       'dueDate': Timestamp.fromDate(dueDate),
       'totalMarks': totalMarks,
+      'createdBy': createdBy,
       'status': status,
+      'createdAt': FieldValue.serverTimestamp(),
     };
   }
 
@@ -149,6 +208,7 @@ class Assignment {
       description: map['description'] ?? '',
       dueDate: (map['dueDate'] as Timestamp).toDate(),
       totalMarks: map['totalMarks'] ?? 0,
+      createdBy: map['createdBy'] ?? '',
       status: map['status'] ?? 'pending',
     );
   }
@@ -156,5 +216,69 @@ class Assignment {
   factory Assignment.fromFirestore(DocumentSnapshot doc) {
     Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
     return Assignment.fromMap(data, doc.id);
+  }
+}
+
+class Submission {
+  final String id;
+  final String userId;
+  final String assignmentId;
+  final String courseId;
+  final String submissionText;
+  final DateTime submittedAt;
+  final String status;
+  final int? marks;
+  final String? feedback;
+  final String studentName;
+  final String studentEmail;
+
+  Submission({
+    required this.id,
+    required this.userId,
+    required this.assignmentId,
+    required this.courseId,
+    required this.submissionText,
+    required this.submittedAt,
+    this.status = 'pending',
+    this.marks,
+    this.feedback,
+    this.studentName = '',
+    this.studentEmail = '',
+  });
+
+  Map<String, dynamic> toMap() {
+    return {
+      'userId': userId,
+      'assignmentId': assignmentId,
+      'courseId': courseId,
+      'submissionText': submissionText,
+      'submittedAt': Timestamp.fromDate(submittedAt),
+      'status': status,
+      'marks': marks,
+      'feedback': feedback,
+      'studentName': studentName,
+      'studentEmail': studentEmail,
+    };
+  }
+
+  factory Submission.fromMap(Map<String, dynamic> map, String documentId) {
+    return Submission(
+      id: documentId,
+      userId: map['userId'] ?? '',
+      assignmentId: map['assignmentId'] ?? '',
+      courseId: map['courseId'] ?? '',
+      submissionText: map['submissionText'] ?? '',
+      submittedAt: (map['submittedAt'] as Timestamp).toDate(),
+      status: map['status'] ?? 'pending',
+      marks: map['marks'],
+      feedback: map['feedback'],
+      studentName: map['studentName'] ?? '',
+      studentEmail: map['studentEmail'] ?? '',
+    );
+  }
+
+  factory Submission.fromFirestore(DocumentSnapshot doc) {
+    Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
+    return Submission.fromMap(data, doc.id);
   }
 }

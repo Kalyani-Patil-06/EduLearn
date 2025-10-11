@@ -6,12 +6,10 @@ class FirestoreService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
-  // Get current user ID
   String? get currentUserId => _auth.currentUser?.uid;
 
   // ==================== USER OPERATIONS ====================
-
-  // Get user data
+  
   Future<Map<String, dynamic>?> getUserData() async {
     try {
       if (currentUserId == null) return null;
@@ -31,16 +29,20 @@ class FirestoreService {
     }
   }
 
-  // Update user profile
-  Future<bool> updateUserProfile(String name, String studentId) async {
+  Future<bool> updateUserProfile(String name, String? studentId) async {
     try {
       if (currentUserId == null) return false;
 
-      await _firestore.collection('users').doc(currentUserId).update({
+      Map<String, dynamic> updateData = {
         'name': name,
-        'studentId': studentId,
         'updatedAt': FieldValue.serverTimestamp(),
-      });
+      };
+
+      if (studentId != null && studentId.isNotEmpty) {
+        updateData['studentId'] = studentId;
+      }
+
+      await _firestore.collection('users').doc(currentUserId).update(updateData);
 
       return true;
     } catch (e) {
@@ -51,7 +53,6 @@ class FirestoreService {
 
   // ==================== COURSE OPERATIONS ====================
 
-  // Get all courses
   Stream<List<Course>> getCoursesStream() {
     return _firestore
         .collection('courses')
@@ -61,7 +62,6 @@ class FirestoreService {
             .toList());
   }
 
-  // Get courses by category
   Stream<List<Course>> getCoursesByCategory(String category) {
     if (category == 'All') {
       return getCoursesStream();
@@ -76,7 +76,17 @@ class FirestoreService {
             .toList());
   }
 
-  // Get single course
+  // Get courses created by teacher
+  Stream<List<Course>> getTeacherCoursesStream(String teacherId) {
+    return _firestore
+        .collection('courses')
+        .where('instructorId', isEqualTo: teacherId)
+        .snapshots()
+        .map((snapshot) => snapshot.docs
+            .map((doc) => Course.fromFirestore(doc))
+            .toList());
+  }
+
   Future<Course?> getCourse(String courseId) async {
     try {
       DocumentSnapshot doc = await _firestore
@@ -94,9 +104,182 @@ class FirestoreService {
     }
   }
 
+  // Create new course (Teacher)
+  Future<String?> createCourse(Course course) async {
+    try {
+      if (currentUserId == null) return null;
+
+      DocumentReference docRef = await _firestore.collection('courses').add({
+        ...course.toMap(),
+        'instructorId': currentUserId,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+
+      return docRef.id;
+    } catch (e) {
+      print('Error creating course: $e');
+      return null;
+    }
+  }
+
+  // Update course (Teacher)
+  Future<bool> updateCourse(String courseId, Map<String, dynamic> updates) async {
+    try {
+      await _firestore.collection('courses').doc(courseId).update({
+        ...updates,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+
+      return true;
+    } catch (e) {
+      print('Error updating course: $e');
+      return false;
+    }
+  }
+
+  // Delete course (Teacher)
+  Future<bool> deleteCourse(String courseId) async {
+    try {
+      await _firestore.collection('courses').doc(courseId).delete();
+      return true;
+    } catch (e) {
+      print('Error deleting course: $e');
+      return false;
+    }
+  }
+
+  // ==================== SYLLABUS/LESSONS OPERATIONS ====================
+
+  Stream<List<Lesson>> getCourseLessonsStream(String courseId) {
+    return _firestore
+        .collection('courses')
+        .doc(courseId)
+        .collection('syllabus')
+        .orderBy('order')
+        .snapshots()
+        .map((snapshot) => snapshot.docs
+            .map((doc) => Lesson.fromFirestore(doc))
+            .toList());
+  }
+
+  Future<List<Lesson>> getCourseLessons(String courseId) async {
+    try {
+      QuerySnapshot snapshot = await _firestore
+          .collection('courses')
+          .doc(courseId)
+          .collection('syllabus')
+          .orderBy('order')
+          .get();
+
+      return snapshot.docs.map((doc) => Lesson.fromFirestore(doc)).toList();
+    } catch (e) {
+      print('Error getting lessons: $e');
+      return [];
+    }
+  }
+
+  Future<bool> addLesson(String courseId, Lesson lesson) async {
+    try {
+      await _firestore
+          .collection('courses')
+          .doc(courseId)
+          .collection('syllabus')
+          .add(lesson.toMap());
+
+      // Update lesson count
+      await _firestore.collection('courses').doc(courseId).update({
+        'lessons': FieldValue.increment(1),
+      });
+
+      return true;
+    } catch (e) {
+      print('Error adding lesson: $e');
+      return false;
+    }
+  }
+
+  Future<bool> updateLesson(String courseId, String lessonId, Map<String, dynamic> updates) async {
+    try {
+      await _firestore
+          .collection('courses')
+          .doc(courseId)
+          .collection('syllabus')
+          .doc(lessonId)
+          .update(updates);
+
+      return true;
+    } catch (e) {
+      print('Error updating lesson: $e');
+      return false;
+    }
+  }
+
+  Future<bool> deleteLesson(String courseId, String lessonId) async {
+    try {
+      await _firestore
+          .collection('courses')
+          .doc(courseId)
+          .collection('syllabus')
+          .doc(lessonId)
+          .delete();
+
+      // Update lesson count
+      await _firestore.collection('courses').doc(courseId).update({
+        'lessons': FieldValue.increment(-1),
+      });
+
+      return true;
+    } catch (e) {
+      print('Error deleting lesson: $e');
+      return false;
+    }
+  }
+
+  // Mark lesson as completed
+  Future<bool> markLessonComplete(String courseId, String lessonId) async {
+    try {
+      if (currentUserId == null) return false;
+
+      DocumentReference enrollmentRef = _firestore
+          .collection('users')
+          .doc(currentUserId)
+          .collection('enrollments')
+          .doc(courseId);
+
+      DocumentSnapshot enrollmentDoc = await enrollmentRef.get();
+      
+      if (!enrollmentDoc.exists) return false;
+
+      UserEnrollment enrollment = UserEnrollment.fromMap(
+        enrollmentDoc.data() as Map<String, dynamic>
+      );
+
+      if (!enrollment.completedLessonIds.contains(lessonId)) {
+        List<String> completedIds = List.from(enrollment.completedLessonIds)..add(lessonId);
+        
+        // Get total lessons
+        Course? course = await getCourse(courseId);
+        int totalLessons = course?.lessons ?? 1;
+        
+        double newProgress = completedIds.length / totalLessons;
+
+        await enrollmentRef.update({
+          'completedLessonIds': completedIds,
+          'completedLessons': completedIds.length,
+          'progress': newProgress,
+          'lastAccessedAt': FieldValue.serverTimestamp(),
+        });
+      }
+
+      return true;
+    } catch (e) {
+      print('Error marking lesson complete: $e');
+      return false;
+    }
+  }
+
   // ==================== ENROLLMENT OPERATIONS ====================
 
-  // Enroll in course
   Future<bool> enrollInCourse(String courseId) async {
     try {
       if (currentUserId == null) return false;
@@ -109,10 +292,8 @@ class FirestoreService {
         lastAccessedAt: DateTime.now(),
       );
 
-      // Use a batch write to ensure both operations succeed or fail together
       WriteBatch batch = _firestore.batch();
 
-      // Add to user's enrollments subcollection
       DocumentReference enrollmentRef = _firestore
           .collection('users')
           .doc(currentUserId)
@@ -121,16 +302,13 @@ class FirestoreService {
       
       batch.set(enrollmentRef, enrollment.toMap());
 
-      // Increment student count in course
       DocumentReference courseRef = _firestore.collection('courses').doc(courseId);
       batch.update(courseRef, {
         'students': FieldValue.increment(1),
       });
 
-      // Commit the batch
       await batch.commit();
 
-      print('Successfully enrolled in course: $courseId');
       return true;
     } catch (e) {
       print('Error enrolling in course: $e');
@@ -138,7 +316,6 @@ class FirestoreService {
     }
   }
 
-  // Check if enrolled in course
   Future<bool> isEnrolledInCourse(String courseId) async {
     try {
       if (currentUserId == null) return false;
@@ -157,23 +334,6 @@ class FirestoreService {
     }
   }
 
-  // Get user's enrollments
-  Stream<List<UserEnrollment>> getUserEnrollmentsStream() {
-    if (currentUserId == null) {
-      return Stream.value([]);
-    }
-
-    return _firestore
-        .collection('users')
-        .doc(currentUserId)
-        .collection('enrollments')
-        .snapshots()
-        .map((snapshot) => snapshot.docs
-            .map((doc) => UserEnrollment.fromMap(doc.data()))
-            .toList());
-  }
-
-  // Get enrollment for specific course
   Future<UserEnrollment?> getCourseEnrollment(String courseId) async {
     try {
       if (currentUserId == null) return null;
@@ -195,73 +355,47 @@ class FirestoreService {
     }
   }
 
-  // Update course progress
-  Future<bool> updateCourseProgress(
-    String courseId,
-    double progress,
-    int completedLessons,
-  ) async {
+  // Get enrolled students for a course (Teacher)
+  Future<List<Map<String, dynamic>>> getEnrolledStudents(String courseId) async {
     try {
-      if (currentUserId == null) return false;
-
-      await _firestore
+      QuerySnapshot usersSnapshot = await _firestore
           .collection('users')
-          .doc(currentUserId)
-          .collection('enrollments')
-          .doc(courseId)
-          .update({
-        'progress': progress,
-        'completedLessons': completedLessons,
-        'lastAccessedAt': FieldValue.serverTimestamp(),
-      });
-
-      return true;
-    } catch (e) {
-      print('Error updating progress: $e');
-      return false;
-    }
-  }
-
-  // Get enrolled courses with details
-  Future<List<Map<String, dynamic>>> getEnrolledCoursesWithDetails() async {
-    try {
-      if (currentUserId == null) return [];
-
-      // Get all enrollments
-      QuerySnapshot enrollmentSnapshot = await _firestore
-          .collection('users')
-          .doc(currentUserId)
-          .collection('enrollments')
+          .where('role', isEqualTo: 'student')
           .get();
 
-      List<Map<String, dynamic>> enrolledCourses = [];
+      List<Map<String, dynamic>> enrolledStudents = [];
 
-      for (var enrollDoc in enrollmentSnapshot.docs) {
-        UserEnrollment enrollment = UserEnrollment.fromMap(
-          enrollDoc.data() as Map<String, dynamic>,
-        );
+      for (var userDoc in usersSnapshot.docs) {
+        DocumentSnapshot enrollmentDoc = await _firestore
+            .collection('users')
+            .doc(userDoc.id)
+            .collection('enrollments')
+            .doc(courseId)
+            .get();
 
-        // Get course details
-        Course? course = await getCourse(enrollment.courseId);
-        
-        if (course != null) {
-          enrolledCourses.add({
-            'course': course,
-            'enrollment': enrollment,
+        if (enrollmentDoc.exists) {
+          Map<String, dynamic> userData = userDoc.data() as Map<String, dynamic>;
+          Map<String, dynamic> enrollmentData = enrollmentDoc.data() as Map<String, dynamic>;
+          
+          enrolledStudents.add({
+            'userId': userDoc.id,
+            'name': userData['name'] ?? '',
+            'email': userData['email'] ?? '',
+            'studentId': userData['studentId'] ?? '',
+            'enrollment': UserEnrollment.fromMap(enrollmentData),
           });
         }
       }
 
-      return enrolledCourses;
+      return enrolledStudents;
     } catch (e) {
-      print('Error getting enrolled courses: $e');
+      print('Error getting enrolled students: $e');
       return [];
     }
   }
 
   // ==================== ASSIGNMENT OPERATIONS ====================
 
-  // Get assignments for a course
   Stream<List<Assignment>> getCourseAssignmentsStream(String courseId) {
     return _firestore
         .collection('assignments')
@@ -272,12 +406,10 @@ class FirestoreService {
             .toList());
   }
 
-  // Get all assignments for enrolled courses
   Future<List<Assignment>> getUserAssignments() async {
     try {
       if (currentUserId == null) return [];
 
-      // Get user's enrolled course IDs
       QuerySnapshot enrollmentSnapshot = await _firestore
           .collection('users')
           .doc(currentUserId)
@@ -290,7 +422,6 @@ class FirestoreService {
 
       if (courseIds.isEmpty) return [];
 
-      // Get assignments for these courses
       QuerySnapshot assignmentSnapshot = await _firestore
           .collection('assignments')
           .where('courseId', whereIn: courseIds)
@@ -305,10 +436,56 @@ class FirestoreService {
     }
   }
 
-  // Submit assignment
+  // Create assignment (Teacher)
+  Future<String?> createAssignment(Assignment assignment) async {
+    try {
+      DocumentReference docRef = await _firestore.collection('assignments').add(assignment.toMap());
+      return docRef.id;
+    } catch (e) {
+      print('Error creating assignment: $e');
+      return null;
+    }
+  }
+
+  // Update assignment (Teacher)
+  Future<bool> updateAssignment(String assignmentId, Map<String, dynamic> updates) async {
+    try {
+      await _firestore.collection('assignments').doc(assignmentId).update(updates);
+      return true;
+    } catch (e) {
+      print('Error updating assignment: $e');
+      return false;
+    }
+  }
+
+  // Delete assignment (Teacher)
+  Future<bool> deleteAssignment(String assignmentId) async {
+    try {
+      await _firestore.collection('assignments').doc(assignmentId).delete();
+      return true;
+    } catch (e) {
+      print('Error deleting assignment: $e');
+      return false;
+    }
+  }
+
+  // Submit assignment (Student)
   Future<bool> submitAssignment(String assignmentId, String submissionText) async {
     try {
       if (currentUserId == null) return false;
+
+      // Get user data for submission
+      Map<String, dynamic>? userData = await getUserData();
+      
+      // Get assignment to find courseId
+      DocumentSnapshot assignmentDoc = await _firestore
+          .collection('assignments')
+          .doc(assignmentId)
+          .get();
+      
+      if (!assignmentDoc.exists) return false;
+      
+      Assignment assignment = Assignment.fromFirestore(assignmentDoc);
 
       await _firestore
           .collection('submissions')
@@ -316,9 +493,12 @@ class FirestoreService {
           .set({
         'userId': currentUserId,
         'assignmentId': assignmentId,
+        'courseId': assignment.courseId,
         'submissionText': submissionText,
         'submittedAt': FieldValue.serverTimestamp(),
         'status': 'submitted',
+        'studentName': userData?['name'] ?? '',
+        'studentEmail': userData?['email'] ?? '',
       });
 
       return true;
@@ -328,9 +508,60 @@ class FirestoreService {
     }
   }
 
+  // Get submission status
+  Future<String?> getSubmissionStatus(String assignmentId) async {
+    try {
+      if (currentUserId == null) return null;
+
+      DocumentSnapshot doc = await _firestore
+          .collection('submissions')
+          .doc('${currentUserId}_$assignmentId')
+          .get();
+
+      if (doc.exists) {
+        return (doc.data() as Map<String, dynamic>)['status'];
+      }
+      return null;
+    } catch (e) {
+      print('Error getting submission status: $e');
+      return null;
+    }
+  }
+
+  // Get all submissions for an assignment (Teacher)
+  Future<List<Submission>> getAssignmentSubmissions(String assignmentId) async {
+    try {
+      QuerySnapshot snapshot = await _firestore
+          .collection('submissions')
+          .where('assignmentId', isEqualTo: assignmentId)
+          .get();
+
+      return snapshot.docs.map((doc) => Submission.fromFirestore(doc)).toList();
+    } catch (e) {
+      print('Error getting submissions: $e');
+      return [];
+    }
+  }
+
+  // Grade submission (Teacher)
+  Future<bool> gradeSubmission(String submissionId, int marks, String feedback) async {
+    try {
+      await _firestore.collection('submissions').doc(submissionId).update({
+        'status': 'graded',
+        'marks': marks,
+        'feedback': feedback,
+        'gradedAt': FieldValue.serverTimestamp(),
+      });
+
+      return true;
+    } catch (e) {
+      print('Error grading submission: $e');
+      return false;
+    }
+  }
+
   // ==================== STATISTICS ====================
 
-  // Get user statistics
   Future<Map<String, int>> getUserStats() async {
     try {
       if (currentUserId == null) {
@@ -356,7 +587,6 @@ class FirestoreService {
           completed++;
         }
 
-        // Estimate hours (each completed lesson = 1 hour)
         totalHours += enrollment.completedLessons;
       }
 
@@ -368,6 +598,47 @@ class FirestoreService {
     } catch (e) {
       print('Error getting stats: $e');
       return {'enrolled': 0, 'completed': 0, 'hours': 0};
+    }
+  }
+
+  // Get teacher stats
+  Future<Map<String, int>> getTeacherStats() async {
+    try {
+      if (currentUserId == null) {
+        return {'courses': 0, 'students': 0, 'assignments': 0};
+      }
+
+      // Count courses
+      QuerySnapshot coursesSnapshot = await _firestore
+          .collection('courses')
+          .where('instructorId', isEqualTo: currentUserId)
+          .get();
+
+      int totalCourses = coursesSnapshot.docs.length;
+
+      // Count total students
+      int totalStudents = 0;
+      for (var doc in coursesSnapshot.docs) {
+        Course course = Course.fromFirestore(doc);
+        totalStudents += course.students;
+      }
+
+      // Count assignments
+      QuerySnapshot assignmentsSnapshot = await _firestore
+          .collection('assignments')
+          .where('createdBy', isEqualTo: currentUserId)
+          .get();
+
+      int totalAssignments = assignmentsSnapshot.docs.length;
+
+      return {
+        'courses': totalCourses,
+        'students': totalStudents,
+        'assignments': totalAssignments,
+      };
+    } catch (e) {
+      print('Error getting teacher stats: $e');
+      return {'courses': 0, 'students': 0, 'assignments': 0};
     }
   }
 }

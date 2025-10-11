@@ -8,9 +8,15 @@ import 'screens/register_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/courses_screen.dart';
 import 'screens/course_detail_screen.dart';
+import 'screens/course_learning_screen.dart';
 import 'screens/profile_screen.dart';
 import 'screens/assignments_screen.dart';
-import 'screens/course_detail_screen.dart';
+import 'screens/teacher/teacher_home_screen.dart';
+import 'screens/teacher/teacher_courses_screen.dart';
+import 'screens/teacher/create_course_screen.dart';
+import 'screens/teacher/edit_course_screen.dart';
+import 'screens/teacher/course_students_screen.dart';
+import 'screens/teacher/teacher_profile_screen.dart';
 import 'services/auth_service.dart';
 import 'firebase_options.dart';
 import 'models/course_model.dart';
@@ -30,7 +36,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
-        ChangeNotifierProvider(create: (_) => AuthService()),
+        ChangeNotifierProvider(create: (_) => AuthService()..initialize()),
       ],
       child: MaterialApp(
         title: 'EduLearn',
@@ -86,18 +92,50 @@ class MyApp extends StatelessWidget {
           '/': (context) => const SplashScreen(),
           '/login': (context) => const LoginScreen(),
           '/register': (context) => const RegisterScreen(),
+          
+          // Student Routes
           '/home': (context) => const HomeScreen(),
           '/courses': (context) => const CoursesScreen(),
           '/profile': (context) => const ProfileScreen(),
           '/assignments': (context) => const AssignmentsScreen(),
+          
+          // Teacher Routes
+          '/teacher-home': (context) => const TeacherHomeScreen(),
+          '/teacher-courses': (context) => const TeacherCoursesScreen(),
+          '/create-course': (context) => const CreateCourseScreen(),
+          '/teacher-profile': (context) => const TeacherProfileScreen(),
         },
         onGenerateRoute: (settings) {
+          // Student Routes with Arguments
           if (settings.name == '/course-detail') {
             final course = settings.arguments as Course;
             return MaterialPageRoute(
               builder: (context) => CourseDetailScreen(course: course),
             );
           }
+          
+          if (settings.name == '/course-learning') {
+            final course = settings.arguments as Course;
+            return MaterialPageRoute(
+              builder: (context) => CourseLearningScreen(course: course),
+            );
+          }
+          
+          // Teacher Routes with Arguments
+          if (settings.name == '/edit-course') {
+            final course = settings.arguments as Course;
+            return MaterialPageRoute(
+              builder: (context) => EditCourseScreen(course: course),
+            );
+          }
+          
+          if (settings.name == '/course-students') {
+            final course = settings.arguments as Course;
+            return MaterialPageRoute(
+              builder: (context) => CourseStudentsScreen(course: course),
+            );
+          }
+          
           return null;
         },
       ),
