@@ -18,6 +18,7 @@ import 'screens/teacher/edit_course_screen.dart';
 import 'screens/teacher/course_students_screen.dart';
 import 'screens/teacher/teacher_profile_screen.dart';
 import 'services/auth_service.dart';
+import 'services/theme_service.dart';
 import 'firebase_options.dart';
 import 'models/course_model.dart';
 
@@ -37,107 +38,125 @@ class MyApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => AuthService()..initialize()),
+        ChangeNotifierProvider(create: (_) => ThemeService()..initialize()),
       ],
-      child: MaterialApp(
-        title: 'EduLearn',
-        debugShowCheckedModeBanner: false,
-        theme: ThemeData(
-          useMaterial3: true,
-          colorScheme: ColorScheme.fromSeed(
-            seedColor: const Color(0xFF6C63FF),
-            brightness: Brightness.light,
-          ),
-          textTheme: GoogleFonts.poppinsTextTheme(),
-          cardTheme: CardThemeData(
-            elevation: 2,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
+      child: Consumer<ThemeService>(
+        builder: (context, themeService, child) => MaterialApp(
+          title: 'EduLearn',
+          debugShowCheckedModeBanner: false,
+          themeMode: themeService.themeMode,
+          theme: ThemeData(
+            useMaterial3: true,
+            colorScheme: ColorScheme.fromSeed(
+              seedColor: const Color(0xFF6C63FF),
+              brightness: Brightness.light,
             ),
-          ),
-          inputDecorationTheme: InputDecorationTheme(
-            filled: true,
-            fillColor: Colors.grey.shade50,
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide.none,
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: Colors.grey.shade200),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: Color(0xFF6C63FF), width: 2),
-            ),
-            errorBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: Colors.red),
-            ),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-          ),
-          elevatedButtonTheme: ElevatedButtonThemeData(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF6C63FF),
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
+            textTheme: GoogleFonts.poppinsTextTheme(),
+            cardTheme: CardThemeData(
               elevation: 2,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+            ),
+            inputDecorationTheme: InputDecorationTheme(
+              filled: true,
+              fillColor: Colors.grey.shade50,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide.none,
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: Colors.grey.shade200),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: Color(0xFF6C63FF), width: 2),
+              ),
+              errorBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: Colors.red),
+              ),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+            ),
+            elevatedButtonTheme: ElevatedButtonThemeData(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF6C63FF),
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                elevation: 2,
+              ),
             ),
           ),
+          darkTheme: ThemeData(
+            useMaterial3: true,
+            colorScheme: ColorScheme.fromSeed(
+              seedColor: const Color(0xFF6C63FF),
+              brightness: Brightness.dark,
+            ),
+            textTheme: GoogleFonts.poppinsTextTheme(ThemeData.dark().textTheme),
+            cardTheme: CardThemeData(
+              elevation: 2,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+            ),
+          ),
+          initialRoute: '/',
+          routes: {
+            '/': (context) => const SplashScreen(),
+            '/login': (context) => const LoginScreen(),
+            '/register': (context) => const RegisterScreen(),
+            
+            // Student Routes
+            '/home': (context) => const HomeScreen(),
+            '/courses': (context) => const CoursesScreen(),
+            '/profile': (context) => const ProfileScreen(),
+            '/assignments': (context) => const AssignmentsScreen(),
+            
+            // Teacher Routes
+            '/teacher-home': (context) => const TeacherHomeScreen(),
+            '/teacher-courses': (context) => const TeacherCoursesScreen(),
+            '/create-course': (context) => const CreateCourseScreen(),
+            '/teacher-profile': (context) => const TeacherProfileScreen(),
+          },
+          onGenerateRoute: (settings) {
+            // Student Routes with Arguments
+            if (settings.name == '/course-detail') {
+              final course = settings.arguments as Course;
+              return MaterialPageRoute(
+                builder: (context) => CourseDetailScreen(course: course),
+              );
+            }
+            
+            if (settings.name == '/course-learning') {
+              final course = settings.arguments as Course;
+              return MaterialPageRoute(
+                builder: (context) => CourseLearningScreen(course: course),
+              );
+            }
+            
+            // Teacher Routes with Arguments
+            if (settings.name == '/edit-course') {
+              final course = settings.arguments as Course;
+              return MaterialPageRoute(
+                builder: (context) => EditCourseScreen(course: course),
+              );
+            }
+            
+            if (settings.name == '/course-students') {
+              final course = settings.arguments as Course;
+              return MaterialPageRoute(
+                builder: (context) => CourseStudentsScreen(course: course),
+              );
+            }
+            
+            return null;
+          },
         ),
-        initialRoute: '/',
-        routes: {
-          '/': (context) => const SplashScreen(),
-          '/login': (context) => const LoginScreen(),
-          '/register': (context) => const RegisterScreen(),
-          
-          // Student Routes
-          '/home': (context) => const HomeScreen(),
-          '/courses': (context) => const CoursesScreen(),
-          '/profile': (context) => const ProfileScreen(),
-          '/assignments': (context) => const AssignmentsScreen(),
-          
-          // Teacher Routes
-          '/teacher-home': (context) => const TeacherHomeScreen(),
-          '/teacher-courses': (context) => const TeacherCoursesScreen(),
-          '/create-course': (context) => const CreateCourseScreen(),
-          '/teacher-profile': (context) => const TeacherProfileScreen(),
-        },
-        onGenerateRoute: (settings) {
-          // Student Routes with Arguments
-          if (settings.name == '/course-detail') {
-            final course = settings.arguments as Course;
-            return MaterialPageRoute(
-              builder: (context) => CourseDetailScreen(course: course),
-            );
-          }
-          
-          if (settings.name == '/course-learning') {
-            final course = settings.arguments as Course;
-            return MaterialPageRoute(
-              builder: (context) => CourseLearningScreen(course: course),
-            );
-          }
-          
-          // Teacher Routes with Arguments
-          if (settings.name == '/edit-course') {
-            final course = settings.arguments as Course;
-            return MaterialPageRoute(
-              builder: (context) => EditCourseScreen(course: course),
-            );
-          }
-          
-          if (settings.name == '/course-students') {
-            final course = settings.arguments as Course;
-            return MaterialPageRoute(
-              builder: (context) => CourseStudentsScreen(course: course),
-            );
-          }
-          
-          return null;
-        },
       ),
     );
   }

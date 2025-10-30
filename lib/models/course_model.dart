@@ -14,6 +14,8 @@ class Course {
   final String iconName;
   final String colorValue;
   final String? imageUrl; // Optional - can be null
+  final double averageRating;
+  final int totalRatings;
 
   Course({
     required this.id,
@@ -29,6 +31,8 @@ class Course {
     required this.iconName,
     required this.colorValue,
     this.imageUrl, // Optional
+    this.averageRating = 0.0,
+    this.totalRatings = 0,
   });
 
   Map<String, dynamic> toMap() {
@@ -46,6 +50,8 @@ class Course {
       'iconName': iconName,
       'colorValue': colorValue,
       'imageUrl': imageUrl, // Can be null
+      'averageRating': averageRating,
+      'totalRatings': totalRatings,
       'updatedAt': FieldValue.serverTimestamp(),
     };
   }
@@ -65,6 +71,8 @@ class Course {
       iconName: map['iconName'] ?? 'school',
       colorValue: map['colorValue'] ?? '6C63FF',
       imageUrl: map['imageUrl'], // Can be null
+      averageRating: (map['averageRating'] ?? 0.0).toDouble(),
+      totalRatings: map['totalRatings'] ?? 0,
     );
   }
 

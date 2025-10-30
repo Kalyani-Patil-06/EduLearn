@@ -49,6 +49,19 @@ dependencies:
   
   # URL Launcher (for YouTube videos)
   url_launcher: ^6.2.2
+  
+  # Theme & Preferences
+  shared_preferences: ^2.2.2
+  
+  # Biometric Authentication
+  local_auth: ^2.1.6
+  
+  # PDF Export
+  pdf: ^3.10.4
+  path_provider: ^2.1.1
+  
+  # Advanced Search
+  diacritic: ^0.1.4
 
 dev_dependencies:
   flutter_test:

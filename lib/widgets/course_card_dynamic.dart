@@ -312,6 +312,9 @@ class _CourseCardDynamicState extends State<CourseCardDynamic> {
                         '${widget.course.lessons} lessons',
                         Colors.grey.shade700,
                       ),
+                      const Spacer(),
+                      if (widget.course.totalRatings > 0)
+                        _buildRatingChip(),
                     ],
                   ),
                   const SizedBox(height: 12),
@@ -370,6 +373,43 @@ class _CourseCardDynamicState extends State<CourseCardDynamic> {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildRatingChip() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: Colors.amber.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.amber.withOpacity(0.3)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(
+            Icons.star,
+            size: 14,
+            color: Colors.amber,
+          ),
+          const SizedBox(width: 4),
+          Text(
+            widget.course.averageRating.toStringAsFixed(1),
+            style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+              color: Colors.amber,
+            ),
+          ),
+          Text(
+            ' (${widget.course.totalRatings})',
+            style: TextStyle(
+              fontSize: 10,
+              color: Colors.grey.shade600,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

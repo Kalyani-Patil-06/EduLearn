@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../services/firestore_service.dart';
 import '../services/auth_service.dart';
 import '../models/course_model.dart';
+import '../widgets/rating_dialog.dart';
 import 'package:intl/intl.dart';
 import 'teacher/teacher_assignments_screen.dart';
 
@@ -22,12 +23,15 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
   bool _isTeacher = false;
   UserEnrollment? _enrollment;
   List<Assignment> _assignments = [];
+  Map<String, dynamic>? _userRating;
+  List<Map<String, dynamic>> _courseReviews = [];
 
   @override
   void initState() {
     super.initState();
     _checkUserRole();
     _loadAssignments();
+    _loadRatingData();
   }
 
   Future<void> _checkUserRole() async {
@@ -68,6 +72,44 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
     } catch (e) {
       print('Error loading assignments: $e');
     }
+  }
+
+  Future<void> _loadRatingData() async {
+    try {
+      final userRating = await _firestoreService.getUserCourseRating(widget.course.id);
+      final reviews = await _firestoreService.getCourseReviews(widget.course.id);
+      
+      if (mounted) {
+        setState(() {
+          _userRating = userRating;
+          _courseReviews = reviews;
+        });
+      }
+    } catch (e) {
+      print('Error loading rating data: $e');
+    }
+  }
+
+  Future<void> _showRatingDialog() async {
+    showDialog(
+      context: context,
+      builder: (context) => RatingDialog(
+        courseTitle: widget.course.title,
+        initialRating: _userRating?['rating']?.toDouble(),
+        initialReview: _userRating?['review'],
+        onSubmit: (rating, review) async {
+          final success = await _firestoreService.rateCourse(
+            widget.course.id,
+            rating,
+            review,
+          );
+          
+          if (success) {
+            await _loadRatingData();
+          }
+        },
+      ),
+    );
   }
 
   Future<void> _handleEnroll() async {
@@ -364,6 +406,14 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
                     const SizedBox(height: 24),
                   ],
                   
+                  // Course Rating Section
+                  if (widget.course.totalRatings > 0 || _userRating != null) ...[
+                    const Text('Course Rating', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 16),
+                    _buildRatingSection(color),
+                    const SizedBox(height: 24),
+                  ],
+                  
                   // Assignments
                   if (_assignments.isNotEmpty) ...[
                     const Text('Course Assignments', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
@@ -380,16 +430,23 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
         ],
       ),
       
-      // ONLY SHOW ENROLL BUTTON FOR STUDENTS WHO ARE NOT ENROLLED
-      floatingActionButton: (!_isTeacher && !_isEnrolled) 
-          ? FloatingActionButton.extended(
-              onPressed: _isLoading ? null : _handleEnroll,
-              icon: _isLoading
-                  ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, valueColor: AlwaysStoppedAnimation<Color>(Colors.white)))
-                  : const Icon(Icons.check_circle_rounded),
-              label: Text(_isLoading ? 'Enrolling...' : 'Enroll Now'),
-              backgroundColor: color,
-            )
+      // ENROLL BUTTON FOR NON-ENROLLED STUDENTS OR RATE BUTTON FOR ENROLLED STUDENTS
+      floatingActionButton: !_isTeacher
+          ? !_isEnrolled
+              ? FloatingActionButton.extended(
+                  onPressed: _isLoading ? null : _handleEnroll,
+                  icon: _isLoading
+                      ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, valueColor: AlwaysStoppedAnimation<Color>(Colors.white)))
+                      : const Icon(Icons.check_circle_rounded),
+                  label: Text(_isLoading ? 'Enrolling...' : 'Enroll Now'),
+                  backgroundColor: color,
+                )
+              : FloatingActionButton.extended(
+                  onPressed: _showRatingDialog,
+                  icon: Icon(_userRating != null ? Icons.edit : Icons.star),
+                  label: Text(_userRating != null ? 'Edit Rating' : 'Rate Course'),
+                  backgroundColor: Colors.amber,
+                )
           : null,
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
     );
@@ -564,6 +621,162 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
               Text('${assignment.totalMarks} marks', style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
             ],
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRatingSection(Color color) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade50,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Overall Rating
+          Row(
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Text(
+                        widget.course.averageRating.toStringAsFixed(1),
+                        style: const TextStyle(
+                          fontSize: 32,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      const Icon(Icons.star, color: Colors.amber, size: 32),
+                    ],
+                  ),
+                  Text(
+                    '${widget.course.totalRatings} ${widget.course.totalRatings == 1 ? 'rating' : 'ratings'}',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.grey.shade600,
+                    ),
+                  ),
+                ],
+              ),
+              const Spacer(),
+              if (!_isTeacher)
+                ElevatedButton.icon(
+                  onPressed: _showRatingDialog,
+                  icon: Icon(_userRating != null ? Icons.edit : Icons.star, size: 18),
+                  label: Text(_userRating != null ? 'Edit' : 'Rate'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.amber,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  ),
+                ),
+            ],
+          ),
+          
+          // User's Rating (if exists)
+          if (_userRating != null) ...[
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.amber.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.amber.withOpacity(0.3)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const Text(
+                        'Your Rating: ',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      ...List.generate(5, (index) => Icon(
+                        index < (_userRating!['rating'] ?? 0) ? Icons.star : Icons.star_border,
+                        color: Colors.amber,
+                        size: 16,
+                      )),
+                    ],
+                  ),
+                  if (_userRating!['review'] != null) ...[
+                    const SizedBox(height: 8),
+                    Text(
+                      _userRating!['review'],
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey.shade700,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ],
+          
+          // Recent Reviews
+          if (_courseReviews.isNotEmpty) ...[
+            const SizedBox(height: 20),
+            const Text(
+              'Recent Reviews',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 12),
+            ..._courseReviews.take(3).map((review) => _buildReviewCard(review)),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildReviewCard(Map<String, dynamic> review) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Text(
+                review['userName'] ?? 'Anonymous',
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
+                ),
+              ),
+              const Spacer(),
+              Row(
+                children: List.generate(5, (index) => Icon(
+                  index < (review['rating'] ?? 0) ? Icons.star : Icons.star_border,
+                  color: Colors.amber,
+                  size: 14,
+                )),
+              ),
+            ],
+          ),
+          if (review['review'] != null) ...[
+            const SizedBox(height: 8),
+            Text(
+              review['review'],
+              style: TextStyle(
+                fontSize: 13,
+                color: Colors.grey.shade700,
+              ),
+            ),
+          ],
         ],
       ),
     );
