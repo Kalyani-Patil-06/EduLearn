@@ -487,9 +487,9 @@ class FirestoreService {
     return [
       Assignment(
         id: 'sample_1',
-        courseId: 'sample_course_1',
+        courseId: 'flutter_course',
         title: 'Flutter Basics Quiz',
-        description: 'Complete the quiz on Flutter widgets and state management concepts.',
+        description: 'Complete the quiz on Flutter widgets, state management, and navigation concepts.',
         dueDate: DateTime.now().add(const Duration(days: 7)),
         totalMarks: 50,
         createdBy: 'teacher_1',
@@ -497,9 +497,9 @@ class FirestoreService {
       ),
       Assignment(
         id: 'sample_2',
-        courseId: 'sample_course_2',
+        courseId: 'mobile_dev_course',
         title: 'Mobile App Design Project',
-        description: 'Design a complete mobile app interface using Figma or similar tools.',
+        description: 'Design a complete mobile app interface using Figma. Include wireframes and user flow.',
         dueDate: DateTime.now().add(const Duration(days: 14)),
         totalMarks: 100,
         createdBy: 'teacher_2',
@@ -507,13 +507,63 @@ class FirestoreService {
       ),
       Assignment(
         id: 'sample_3',
-        courseId: 'sample_course_1',
-        title: 'Database Integration Task',
-        description: 'Implement Firebase integration in your Flutter app with CRUD operations.',
+        courseId: 'flutter_course',
+        title: 'Firebase Integration Task',
+        description: 'Implement Firebase authentication and Firestore in your Flutter app with CRUD operations.',
         dueDate: DateTime.now().add(const Duration(days: 3)),
         totalMarks: 75,
         createdBy: 'teacher_1',
         status: 'submitted',
+      ),
+      Assignment(
+        id: 'sample_4',
+        courseId: 'web_dev_course',
+        title: 'React Component Library',
+        description: 'Create reusable React components: Button, Input, Card, Modal, Navigation.',
+        dueDate: DateTime.now().add(const Duration(days: 10)),
+        totalMarks: 80,
+        createdBy: 'teacher_3',
+        status: 'pending',
+      ),
+      Assignment(
+        id: 'sample_5',
+        courseId: 'data_science_course',
+        title: 'Data Analysis Report',
+        description: 'Analyze dataset using Python and pandas. Create visualizations and insights.',
+        dueDate: DateTime.now().add(const Duration(days: 21)),
+        totalMarks: 90,
+        createdBy: 'teacher_4',
+        status: 'pending',
+      ),
+      Assignment(
+        id: 'sample_6',
+        courseId: 'mobile_dev_course',
+        title: 'API Integration Challenge',
+        description: 'Build mobile app consuming REST APIs with error handling and offline caching.',
+        dueDate: DateTime.now().add(const Duration(days: 1)),
+        totalMarks: 60,
+        createdBy: 'teacher_2',
+        status: 'pending',
+      ),
+      Assignment(
+        id: 'sample_7',
+        courseId: 'flutter_course',
+        title: 'State Management Comparison',
+        description: 'Compare Provider, Bloc, Riverpod, and GetX. Implement same feature with each.',
+        dueDate: DateTime.now().subtract(const Duration(days: 2)),
+        totalMarks: 85,
+        createdBy: 'teacher_1',
+        status: 'pending',
+      ),
+      Assignment(
+        id: 'sample_8',
+        courseId: 'web_dev_course',
+        title: 'Performance Optimization',
+        description: 'Optimize web app performance focusing on bundle size and Core Web Vitals.',
+        dueDate: DateTime.now().add(const Duration(days: 5)),
+        totalMarks: 70,
+        createdBy: 'teacher_3',
+        status: 'graded',
       ),
     ];
   }
@@ -529,12 +579,68 @@ class FirestoreService {
       
       List<Map<String, dynamic>> sampleAssignments = [
         {
-          'courseId': 'sample_course_1',
+          'courseId': 'flutter_course',
           'title': 'Flutter Basics Quiz',
-          'description': 'Complete the quiz on Flutter widgets and state management concepts.',
+          'description': 'Complete the quiz on Flutter widgets, state management, and navigation concepts. Cover StatefulWidget, StatelessWidget, and Provider.',
           'dueDate': DateTime.now().add(const Duration(days: 7)),
           'totalMarks': 50,
           'createdBy': 'teacher_1',
+        },
+        {
+          'courseId': 'mobile_dev_course',
+          'title': 'Mobile App Design Project',
+          'description': 'Design a complete mobile app interface using Figma. Include wireframes, user flow, and interactive prototypes for a social media app.',
+          'dueDate': DateTime.now().add(const Duration(days: 14)),
+          'totalMarks': 100,
+          'createdBy': 'teacher_2',
+        },
+        {
+          'courseId': 'flutter_course',
+          'title': 'Firebase Integration Task',
+          'description': 'Implement Firebase authentication and Firestore database in your Flutter app. Include user registration, login, and CRUD operations.',
+          'dueDate': DateTime.now().add(const Duration(days: 3)),
+          'totalMarks': 75,
+          'createdBy': 'teacher_1',
+        },
+        {
+          'courseId': 'web_dev_course',
+          'title': 'React Component Library',
+          'description': 'Create a reusable React component library with at least 5 components: Button, Input, Card, Modal, and Navigation. Include TypeScript definitions.',
+          'dueDate': DateTime.now().add(const Duration(days: 10)),
+          'totalMarks': 80,
+          'createdBy': 'teacher_3',
+        },
+        {
+          'courseId': 'data_science_course',
+          'title': 'Data Analysis Report',
+          'description': 'Analyze the provided dataset using Python and pandas. Create visualizations and write a comprehensive report with insights and recommendations.',
+          'dueDate': DateTime.now().add(const Duration(days: 21)),
+          'totalMarks': 90,
+          'createdBy': 'teacher_4',
+        },
+        {
+          'courseId': 'mobile_dev_course',
+          'title': 'API Integration Challenge',
+          'description': 'Build a mobile app that consumes REST APIs. Implement proper error handling, loading states, and offline caching.',
+          'dueDate': DateTime.now().add(const Duration(days: 1)),
+          'totalMarks': 60,
+          'createdBy': 'teacher_2',
+        },
+        {
+          'courseId': 'flutter_course',
+          'title': 'State Management Comparison',
+          'description': 'Compare different state management solutions in Flutter: Provider, Bloc, Riverpod, and GetX. Implement the same feature using each approach.',
+          'dueDate': DateTime.now().subtract(const Duration(days: 2)),
+          'totalMarks': 85,
+          'createdBy': 'teacher_1',
+        },
+        {
+          'courseId': 'web_dev_course',
+          'title': 'Performance Optimization',
+          'description': 'Optimize a provided web application for performance. Focus on bundle size, loading times, and Core Web Vitals metrics.',
+          'dueDate': DateTime.now().add(const Duration(days: 5)),
+          'totalMarks': 70,
+          'createdBy': 'teacher_3',
         },
       ];
       
@@ -545,8 +651,29 @@ class FirestoreService {
           'createdAt': FieldValue.serverTimestamp(),
         });
       }
+      
+      print('✅ Created ${sampleAssignments.length} sample assignments');
     } catch (e) {
       print('Error creating sample assignments: $e');
+    }
+  }
+
+  // Force create new assignments (for testing)
+  Future<void> createFreshAssignments() async {
+    try {
+      // Delete existing assignments
+      QuerySnapshot existing = await _firestore.collection('assignments').get();
+      WriteBatch batch = _firestore.batch();
+      for (var doc in existing.docs) {
+        batch.delete(doc.reference);
+      }
+      await batch.commit();
+      
+      // Create new assignments
+      await _createSampleAssignmentsIfNeeded();
+      print('✅ Fresh assignments created!');
+    } catch (e) {
+      print('Error creating fresh assignments: $e');
     }
   }
 

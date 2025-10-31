@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:email_validator/email_validator.dart';
 import '../services/auth_service.dart';
+import '../services/biometric_service.dart';
 import '../widgets/custom_button.dart';
 import '../widgets/custom_text_field.dart';
 
@@ -16,14 +17,79 @@ class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  final BiometricService _biometricService = BiometricService();
   bool _isLoading = false;
   bool _obscurePassword = true;
+  bool _biometricAvailable = false;
+  bool _biometricEnabled = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkBiometricAvailability();
+  }
 
   @override
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
+  }
+
+  Future<void> _checkBiometricAvailability() async {
+    final isAvailable = await _biometricService.isBiometricAvailable();
+    final isEnabled = await _biometricService.isBiometricEnabled();
+    
+    if (mounted) {
+      setState(() {
+        _biometricAvailable = isAvailable;
+        _biometricEnabled = isEnabled;
+      });
+    }
+  }
+
+  Future<void> _handleBiometricLogin() async {
+    try {
+      setState(() => _isLoading = true);
+      
+      final isAuthenticated = await _biometricService.authenticate();
+      
+      if (isAuthenticated) {
+        // For demo purposes, we'll use a stored email/password or navigate directly
+        // In a real app, you'd store encrypted credentials or use a token
+        final authService = Provider.of<AuthService>(context, listen: false);
+        
+        // Check if user has stored credentials (you can implement this)
+        // For now, we'll show a success message and navigate
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('✅ Biometric authentication successful!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        
+        // Navigate to home (you might want to check user role here)
+        Navigator.pushReplacementNamed(context, '/home');
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Biometric authentication failed'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Biometric error: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
   }
 
   Future<void> _handleLogin() async {
@@ -305,6 +371,92 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                   ),
                 ),
+                const SizedBox(height: 16),
+                
+                // Biometric Authentication Section
+                if (_biometricAvailable) ..[
+                  Row(
+                    children: [
+                      Expanded(child: Divider(color: Colors.grey.shade300)),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: Text(
+                          'OR',
+                          style: TextStyle(
+                            color: Colors.grey.shade600,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                      Expanded(child: Divider(color: Colors.grey.shade300)),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  
+                  // Biometric Login Button
+                  SizedBox(
+                    width: double.infinity,
+                    height: 56,
+                    child: OutlinedButton.icon(
+                      onPressed: _isLoading ? null : _handleBiometricLogin,
+                      icon: const Icon(
+                        Icons.fingerprint,
+                        size: 24,
+                      ),
+                      label: const Text(
+                        'Login with Biometrics',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: const Color(0xFF4ECDC4),
+                        side: const BorderSide(
+                          color: Color(0xFF4ECDC4),
+                          width: 2,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  
+                  // Enable Biometric Toggle
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        'Enable biometric login',
+                        style: TextStyle(
+                          color: Colors.grey.shade600,
+                          fontSize: 14,
+                        ),
+                      ),
+                      Switch(
+                        value: _biometricEnabled,
+                        onChanged: (value) async {
+                          await _biometricService.setBiometricEnabled(value);
+                          setState(() => _biometricEnabled = value);
+                          
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                value 
+                                    ? 'Biometric login enabled' 
+                                    : 'Biometric login disabled',
+                              ),
+                              backgroundColor: value ? Colors.green : Colors.orange,
+                            ),
+                          );
+                        },
+                        activeColor: const Color(0xFF4ECDC4),
+                      ),
+                    ],
+                  ),
+                ],
                 const SizedBox(height: 24),
                 
                 // Register Link

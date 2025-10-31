@@ -305,6 +305,17 @@ class _AssignmentsScreenState extends State<AssignmentsScreen> {
                 ),
                 onTap: _exportToPDF,
               ),
+              PopupMenuItem(
+                value: 'refresh',
+                child: const Row(
+                  children: [
+                    Icon(Icons.refresh, size: 20),
+                    SizedBox(width: 8),
+                    Text('Create Fresh Assignments'),
+                  ],
+                ),
+                onTap: _createFreshAssignments,
+              ),
               const PopupMenuDivider(),
               const PopupMenuItem(
                 value: 'dueDate',
@@ -745,7 +756,7 @@ class _AssignmentsScreenState extends State<AssignmentsScreen> {
                       _buildQuickAction(
                         'Submit',
                         Icons.upload_outlined,
-                        () => _showAssignmentDetails(assignment),
+                        () => _showSubmissionDialog(assignment),
                         isPrimary: true,
                       ),
                     ],
@@ -931,7 +942,7 @@ class _AssignmentsScreenState extends State<AssignmentsScreen> {
                           child: ElevatedButton(
                             onPressed: () {
                               Navigator.pop(context);
-                              // Navigate to submission screen
+                              _showSubmissionDialog(assignment);
                             },
                             style: ElevatedButton.styleFrom(
                               backgroundColor: const Color(0xFF6C63FF),
@@ -1044,6 +1055,203 @@ class _AssignmentsScreenState extends State<AssignmentsScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Failed to export PDF: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  void _showSubmissionDialog(Assignment assignment) {
+    final submissionController = TextEditingController();
+    bool isSubmitting = false;
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          title: Text('Submit: ${assignment.title}'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Assignment Description:',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.grey.shade700,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade50,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.grey.shade200),
+                  ),
+                  child: Text(
+                    assignment.description,
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.grey.shade600,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Icon(Icons.schedule, size: 16, color: Colors.grey.shade600),
+                    const SizedBox(width: 4),
+                    Text(
+                      'Due: ${DateFormat('MMM dd, yyyy').format(assignment.dueDate)}',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey.shade600,
+                      ),
+                    ),
+                    const Spacer(),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.blue.shade50,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        '${assignment.totalMarks} marks',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.blue.shade700,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Your Submission:',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.grey.shade700,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: submissionController,
+                  maxLines: 6,
+                  decoration: InputDecoration(
+                    hintText: 'Enter your assignment submission here...\n\nYou can include:\n• Your solution\n• Explanations\n• Code snippets\n• References',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(color: Color(0xFF6C63FF), width: 2),
+                    ),
+                    contentPadding: const EdgeInsets.all(16),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: isSubmitting ? null : () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: isSubmitting ? null : () async {
+                if (submissionController.text.trim().isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Please enter your submission'),
+                      backgroundColor: Colors.orange,
+                    ),
+                  );
+                  return;
+                }
+
+                setState(() => isSubmitting = true);
+
+                try {
+                  final success = await _firestoreService.submitAssignment(
+                    assignment.id,
+                    submissionController.text.trim(),
+                  );
+
+                  Navigator.pop(context);
+
+                  if (success) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('✅ Assignment submitted successfully!'),
+                        backgroundColor: Colors.green,
+                      ),
+                    );
+                    // Refresh assignments to show updated status
+                    _loadAssignments();
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('❌ Failed to submit assignment. Please try again.'),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                  }
+                } catch (e) {
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('❌ Error: $e'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF6C63FF),
+                foregroundColor: Colors.white,
+              ),
+              child: isSubmitting
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                      ),
+                    )
+                  : const Text('Submit Assignment'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _createFreshAssignments() async {
+    try {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Creating fresh assignments...'),
+          backgroundColor: Colors.blue,
+        ),
+      );
+      
+      await _firestoreService.createFreshAssignments();
+      await _loadAssignments();
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('✅ Fresh assignments created! Test the submission feature.'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error: $e'),
           backgroundColor: Colors.red,
         ),
       );
