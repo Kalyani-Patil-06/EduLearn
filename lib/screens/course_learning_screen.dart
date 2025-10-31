@@ -21,12 +21,12 @@ class _CourseLearningScreenState extends State<CourseLearningScreen> {
     {
       'title': 'Introduction to the Course',
       'duration': '10 min',
-      'url': 'https://www.youtube.com/watch?v=dQw4w9WgXcQ', // Replace with real link
+      'url': 'https://youtu.be/jqxz7QvdWk8?si=ZJFQ3BJdHGQYzR3K', // Replace with real link
     },
     {
       'title': 'Getting Started - Basics',
       'duration': '15 min',
-      'url': 'https://www.youtube.com/watch?v=dQw4w9WgXcQ', // Replace with real link
+      'url': 'https://youtu.be/jqxz7QvdWk8?si=EKFHStdMph5unva6', // Replace with real link
     },
     {
       'title': 'Understanding Core Concepts',

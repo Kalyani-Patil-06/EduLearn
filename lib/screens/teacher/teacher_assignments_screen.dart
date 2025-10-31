@@ -14,6 +14,35 @@ class TeacherAssignmentsScreen extends StatefulWidget {
 
 class _TeacherAssignmentsScreenState extends State<TeacherAssignmentsScreen> {
   final FirestoreService _firestoreService = FirestoreService();
+  List<Assignment> _assignments = [];
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadAssignments();
+  }
+
+  // ✅ FIXED: Load assignments without streaming to avoid index error
+  Future<void> _loadAssignments() async {
+    setState(() => _isLoading = true);
+    
+    try {
+      final assignments = await _firestoreService.getCourseAssignmentsList(widget.course.id);
+      
+      if (mounted) {
+        setState(() {
+          _assignments = assignments;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      print('Error loading assignments: $e');
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -27,63 +56,49 @@ class _TeacherAssignmentsScreenState extends State<TeacherAssignmentsScreen> {
         elevation: 0,
         backgroundColor: Colors.transparent,
       ),
-      body: StreamBuilder<List<Assignment>>(
-        stream: _firestoreService.getCourseAssignmentsStream(widget.course.id),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-
-          if (snapshot.hasError) {
-            return Center(
-              child: Text('Error: ${snapshot.error}'),
-            );
-          }
-
-          final assignments = snapshot.data ?? [];
-
-          if (assignments.isEmpty) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.assignment_outlined,
-                    size: 80,
-                    color: Colors.grey.shade300,
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : _assignments.isEmpty
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.assignment_outlined,
+                        size: 80,
+                        color: Colors.grey.shade300,
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        'No assignments yet',
+                        style: TextStyle(
+                          fontSize: 18,
+                          color: Colors.grey.shade600,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Create your first assignment',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.grey.shade500,
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 16),
-                  Text(
-                    'No assignments yet',
-                    style: TextStyle(
-                      fontSize: 18,
-                      color: Colors.grey.shade600,
-                      fontWeight: FontWeight.w600,
-                    ),
+                )
+              : RefreshIndicator(
+                  onRefresh: _loadAssignments,
+                  child: ListView.builder(
+                    padding: const EdgeInsets.all(20),
+                    itemCount: _assignments.length,
+                    itemBuilder: (context, index) {
+                      final assignment = _assignments[index];
+                      return _buildAssignmentCard(assignment);
+                    },
                   ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Create your first assignment',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.grey.shade500,
-                    ),
-                  ),
-                ],
-              ),
-            );
-          }
-
-          return ListView.builder(
-            padding: const EdgeInsets.all(20),
-            itemCount: assignments.length,
-            itemBuilder: (context, index) {
-              final assignment = assignments[index];
-              return _buildAssignmentCard(assignment);
-            },
-          );
-        },
-      ),
+                ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _showCreateAssignmentDialog(),
         icon: const Icon(Icons.add),
@@ -329,6 +344,7 @@ class _TeacherAssignmentsScreenState extends State<TeacherAssignmentsScreen> {
                       backgroundColor: Colors.green,
                     ),
                   );
+                  _loadAssignments();
                 }
               },
               child: const Text('Create'),
@@ -427,6 +443,7 @@ class _TeacherAssignmentsScreenState extends State<TeacherAssignmentsScreen> {
                       backgroundColor: Colors.green,
                     ),
                   );
+                  _loadAssignments();
                 }
               },
               child: const Text('Update'),
@@ -460,6 +477,7 @@ class _TeacherAssignmentsScreenState extends State<TeacherAssignmentsScreen> {
                     backgroundColor: Colors.green,
                   ),
                 );
+                _loadAssignments();
               }
             },
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),

@@ -144,18 +144,21 @@ class FirestoreService {
     }
   }
 
-  // ==================== ENROLLMENT OPERATIONS - COMPLETELY FIXED ====================
+  // ==================== ENROLLMENT OPERATIONS ====================
 
-  // ✅ FIXED: Complete enrollment fix with proper error handling
   Future<bool> enrollInCourse(String courseId) async {
     try {
       if (currentUserId == null) {
-        print('❌ No user logged in');
+        print('ENROLLMENT FAILED: No user logged in');
         return false;
       }
 
-      print('📝 Enrolling user $currentUserId in course $courseId');
-
+      // Get user data to check role
+      final userData = await getUserData();
+      final userRole = userData?['role'] ?? 'student';
+      final userName = userData?['name'] ?? 'Unknown';
+      final userEmail = userData?['email'] ?? 'Unknown';
+      
       // Check if already enrolled
       final enrollmentDoc = await _firestore
           .collection('users')
@@ -165,11 +168,12 @@ class FirestoreService {
           .get();
 
       if (enrollmentDoc.exists) {
-        print('✅ Already enrolled');
+        print('User is already enrolled in this course');
         return true;
       }
 
       // Create enrollment
+      print('Creating new enrollment...');
       await _firestore
           .collection('users')
           .doc(currentUserId)
@@ -183,17 +187,22 @@ class FirestoreService {
         'lastAccessedAt': FieldValue.serverTimestamp(),
         'completedLessonIds': [],
       });
+      
 
-      // Increment student count
-      await _firestore.collection('courses').doc(courseId).update({
-        'students': FieldValue.increment(1),
-      });
+      // Only increment student count if user is actually a STUDENT
+      if (userRole == 'student') {
+        print('Incrementing course student count...');
+        await _firestore.collection('courses').doc(courseId).update({
+          'students': FieldValue.increment(1),
+        });
+        print('Student count incremented');
+      } else {
+        print('User is $userRole - NOT incrementing student count');
+      }
 
-      print('✅ Successfully enrolled!');
       return true;
 
     } catch (e) {
-      print('❌ Enrollment error: $e');
       return false;
     }
   }
@@ -237,14 +246,109 @@ class FirestoreService {
     }
   }
 
+  // ✅ FIXED: Get enrolled students properly (ONLY STUDENTS, exclude teachers)
   Future<List<Map<String, dynamic>>> getEnrolledStudents(String courseId) async {
     try {
+    
+      // STEP 1: Get ALL users first (for debugging)
+      QuerySnapshot allUsersSnapshot = await _firestore.collection('users').get();
+      print('📊 Total users in database: ${allUsersSnapshot.docs.length}');
+      
+      // Check all users and their roles
+      for (var userDoc in allUsersSnapshot.docs) {
+        Map<String, dynamic> userData = userDoc.data() as Map<String, dynamic>;
+        print('👤 User: ${userData['name']} | Role: ${userData['role']} | Email: ${userData['email']}');
+      }
+      
+      print('───────────────────────────────────────────────');
+      
+      // STEP 2: Get ONLY users with role = 'student'
+      QuerySnapshot studentsSnapshot = await _firestore
+          .collection('users')
+          .where('role', isEqualTo: 'student')
+          .get();
+
+      print('Total STUDENT users found: ${studentsSnapshot.docs.length}');
+      
+      if (studentsSnapshot.docs.isEmpty) {
+        print('WARNING: No users with role="student" found in database!');
+        print('This might mean:');
+        print('1. Students are registered with a different role value');
+        print('2. The role field is missing or misspelled');
+        print('3. No students have been created yet');
+      }
+
+      List<Map<String, dynamic>> enrolledStudents = [];
+
+      // STEP 3: Check each student's enrollment
+      for (var userDoc in studentsSnapshot.docs) {
+        try {
+          Map<String, dynamic> userData = userDoc.data() as Map<String, dynamic>;
+          print('🔍 Checking student: ${userData['name']} (${userDoc.id})');
+          
+          // Check if this student has enrollment for this course
+          DocumentSnapshot enrollmentDoc = await _firestore
+              .collection('users')
+              .doc(userDoc.id)
+              .collection('enrollments')
+              .doc(courseId)
+              .get();
+
+          if (enrollmentDoc.exists) {
+            Map<String, dynamic> enrollmentData = enrollmentDoc.data() as Map<String, dynamic>;
+            print('Enrollment data: $enrollmentData');
+            
+            // Double check the role is student
+            String userRole = userData['role'] ?? 'student';
+            
+            if (userRole == 'student') {
+              print('MATCHED: Adding ${userData['name']} to enrolled students list');
+              
+              enrolledStudents.add({
+                'userId': userDoc.id,
+                'name': userData['name'] ?? 'Unknown Student',
+                'email': userData['email'] ?? '',
+                'studentId': userData['studentId'] ?? '',
+                'role': userRole,
+                'enrollment': UserEnrollment.fromMap(enrollmentData),
+              });
+            } else {
+              print('SKIPPED: User role is "$userRole", not "student"');
+            }
+          } else {
+            print('NOT ENROLLED: Student has no enrollment for this course');
+          }
+        } catch (e) {
+          print('ERROR processing user ${userDoc.id}: $e');
+          continue;
+        }
+      }
+
+      if (enrolledStudents.isEmpty) {
+        print('NO STUDENTS FOUND! Possible reasons:');
+        print('1. Students enrolled but role field is wrong');
+        print('2. Enrollment is in wrong collection path');
+        print('3. Course ID mismatch');
+      }
+      
+      return enrolledStudents;
+    } catch (e) {
+      print('CRITICAL ERROR getting enrolled students: $e');
+      print('Stack trace: ${StackTrace.current}');
+      return [];
+    }
+  }
+
+  // Get actual student count for a course (excluding teachers)
+  Future<int> getCourseStudentCount(String courseId) async {
+    try {
+      // Get only users with role = 'student'
       QuerySnapshot usersSnapshot = await _firestore
           .collection('users')
           .where('role', isEqualTo: 'student')
           .get();
 
-      List<Map<String, dynamic>> enrolledStudents = [];
+      int studentCount = 0;
 
       for (var userDoc in usersSnapshot.docs) {
         DocumentSnapshot enrollmentDoc = await _firestore
@@ -255,53 +359,91 @@ class FirestoreService {
             .get();
 
         if (enrollmentDoc.exists) {
-          Map<String, dynamic> userData = userDoc.data() as Map<String, dynamic>;
-          Map<String, dynamic> enrollmentData = enrollmentDoc.data() as Map<String, dynamic>;
-          
-          enrolledStudents.add({
-            'userId': userDoc.id,
-            'name': userData['name'] ?? '',
-            'email': userData['email'] ?? '',
-            'studentId': userData['studentId'] ?? '',
-            'enrollment': UserEnrollment.fromMap(enrollmentData),
-          });
+          studentCount++;
         }
       }
 
-      return enrolledStudents;
+      return studentCount;
     } catch (e) {
-      print('Error getting enrolled students: $e');
-      return [];
+      print('Error getting student count: $e');
+      return 0;
+    }
+  }
+
+  // Fix student count for a course (removes teachers from count)
+  Future<bool> fixCourseStudentCount(String courseId) async {
+    try {
+      print('Fixing student count for course: $courseId');
+      
+      // Get actual student count (excluding teachers)
+      final actualCount = await getCourseStudentCount(courseId);
+      
+      print('Actual student count: $actualCount');
+      
+      // Update the course with correct count
+      await _firestore.collection('courses').doc(courseId).update({
+        'students': actualCount,
+      });
+      
+      print('Course student count updated to $actualCount');
+      return true;
+    } catch (e) {
+      print('Error fixing student count: $e');
+      return false;
     }
   }
 
   // ==================== ASSIGNMENT OPERATIONS ====================
 
+  // Get assignments as List instead of Stream to avoid index error
+  Future<List<Assignment>> getCourseAssignmentsList(String courseId) async {
+    try {
+      QuerySnapshot snapshot = await _firestore
+          .collection('assignments')
+          .where('courseId', isEqualTo: courseId)
+          .get();
+
+      List<Assignment> assignments = snapshot.docs
+          .map((doc) => Assignment.fromFirestore(doc))
+          .toList();
+
+      // Sort by due date
+      assignments.sort((a, b) => a.dueDate.compareTo(b.dueDate));
+
+      return assignments;
+    } catch (e) {
+      print('Error getting course assignments: $e');
+      return [];
+    }
+  }
+
   Stream<List<Assignment>> getCourseAssignmentsStream(String courseId) {
     return _firestore
         .collection('assignments')
         .where('courseId', isEqualTo: courseId)
-        .orderBy('dueDate', descending: false)
         .snapshots()
-        .map((snapshot) => snapshot.docs
-            .map((doc) => Assignment.fromFirestore(doc))
-            .toList());
+        .map((snapshot) {
+          List<Assignment> assignments = snapshot.docs
+              .map((doc) => Assignment.fromFirestore(doc))
+              .toList();
+          
+          // Sort by due date
+          assignments.sort((a, b) => a.dueDate.compareTo(b.dueDate));
+          
+          return assignments;
+        });
   }
 
   Future<List<Assignment>> getUserAssignments() async {
     try {
       if (currentUserId == null) {
-        // Return sample assignments for demo
         return _getSampleAssignments();
       }
 
-      // First ensure sample assignments exist
       await _createSampleAssignmentsIfNeeded();
 
-      // Get all assignments for demo purposes
       QuerySnapshot allAssignments = await _firestore
           .collection('assignments')
-          .orderBy('dueDate', descending: false)
           .limit(10)
           .get();
       
@@ -327,7 +469,9 @@ class FirestoreService {
         }
       }
       
-      // If no assignments from Firestore, return sample ones
+      // Sort by due date
+      assignments.sort((a, b) => a.dueDate.compareTo(b.dueDate));
+      
       if (assignments.isEmpty) {
         return _getSampleAssignments();
       }
@@ -335,7 +479,6 @@ class FirestoreService {
       return assignments;
     } catch (e) {
       print('Error getting user assignments: $e');
-      // Return sample assignments as fallback
       return _getSampleAssignments();
     }
   }
@@ -372,32 +515,11 @@ class FirestoreService {
         createdBy: 'teacher_1',
         status: 'submitted',
       ),
-      Assignment(
-        id: 'sample_4',
-        courseId: 'sample_course_3',
-        title: 'Business Plan Presentation',
-        description: 'Create and present a comprehensive business plan for a tech startup.',
-        dueDate: DateTime.now().add(const Duration(days: 21)),
-        totalMarks: 80,
-        createdBy: 'teacher_3',
-        status: 'pending',
-      ),
-      Assignment(
-        id: 'sample_5',
-        courseId: 'sample_course_2',
-        title: 'UI/UX Case Study',
-        description: 'Analyze and redesign an existing mobile app\'s user interface.',
-        dueDate: DateTime.now().subtract(const Duration(days: 2)),
-        totalMarks: 60,
-        createdBy: 'teacher_2',
-        status: 'graded',
-      ),
     ];
   }
 
   Future<void> _createSampleAssignmentsIfNeeded() async {
     try {
-      // Try to create sample assignments in Firestore
       QuerySnapshot existingAssignments = await _firestore
           .collection('assignments')
           .limit(1)
@@ -405,7 +527,6 @@ class FirestoreService {
       
       if (existingAssignments.docs.isNotEmpty) return;
       
-      // Create sample assignments
       List<Map<String, dynamic>> sampleAssignments = [
         {
           'courseId': 'sample_course_1',
@@ -413,22 +534,6 @@ class FirestoreService {
           'description': 'Complete the quiz on Flutter widgets and state management concepts.',
           'dueDate': DateTime.now().add(const Duration(days: 7)),
           'totalMarks': 50,
-          'createdBy': 'teacher_1',
-        },
-        {
-          'courseId': 'sample_course_2',
-          'title': 'Mobile App Design Project',
-          'description': 'Design a complete mobile app interface using Figma or similar tools.',
-          'dueDate': DateTime.now().add(const Duration(days: 14)),
-          'totalMarks': 100,
-          'createdBy': 'teacher_2',
-        },
-        {
-          'courseId': 'sample_course_1',
-          'title': 'Database Integration Task',
-          'description': 'Implement Firebase integration in your Flutter app with CRUD operations.',
-          'dueDate': DateTime.now().add(const Duration(days: 3)),
-          'totalMarks': 75,
           'createdBy': 'teacher_1',
         },
       ];
@@ -440,11 +545,8 @@ class FirestoreService {
           'createdAt': FieldValue.serverTimestamp(),
         });
       }
-      
-      print('✅ Sample assignments created');
     } catch (e) {
       print('Error creating sample assignments: $e');
-      // Ignore error, will use local sample data
     }
   }
 
@@ -744,7 +846,6 @@ class FirestoreService {
         'createdAt': FieldValue.serverTimestamp(),
       });
 
-      // Update course average rating
       await _updateCourseAverageRating(courseId);
       
       return true;
@@ -808,7 +909,6 @@ class FirestoreService {
           .collection('course_ratings')
           .where('courseId', isEqualTo: courseId)
           .where('review', isNotEqualTo: null)
-          .orderBy('createdAt', descending: true)
           .limit(10)
           .get();
 
@@ -817,7 +917,6 @@ class FirestoreService {
       for (var doc in snapshot.docs) {
         Map<String, dynamic> ratingData = doc.data() as Map<String, dynamic>;
         
-        // Get user data
         DocumentSnapshot userDoc = await _firestore
             .collection('users')
             .doc(ratingData['userId'])
