@@ -7,6 +7,7 @@ import 'screens/login_screen.dart';
 import 'screens/register_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/courses_screen.dart';
+import 'screens/enrolled_courses_screen.dart';
 import 'screens/course_detail_screen.dart';
 import 'screens/course_learning_screen.dart';
 import 'screens/profile_screen.dart';
@@ -21,6 +22,7 @@ import 'services/auth_service.dart';
 import 'services/theme_service.dart';
 import 'firebase_options.dart';
 import 'models/course_model.dart';
+
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -114,6 +116,7 @@ class MyApp extends StatelessWidget {
             // Student Routes
             '/home': (context) => const HomeScreen(),
             '/courses': (context) => const CoursesScreen(),
+            '/enrolled-courses': (context) => const EnrolledCoursesScreen(),
             '/profile': (context) => const ProfileScreen(),
             '/assignments': (context) => const AssignmentsScreen(),
             
