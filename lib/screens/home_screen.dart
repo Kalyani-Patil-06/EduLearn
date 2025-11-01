@@ -91,7 +91,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Hello, $userName! 👋',
+                          'Hello, $userName!',
                           style: const TextStyle(
                             fontSize: 24,
                             fontWeight: FontWeight.bold,
@@ -183,7 +183,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Image.asset(
-                          'assets/images/student_learning.jpg', // ADD THIS IMAGE
+                          'assets/images/student_learning.jpg', 
                           fit: BoxFit.contain,
                           errorBuilder: (context, error, stackTrace) {
                             return const Icon(
@@ -223,7 +223,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     title: 'My Courses',
                     imagePath: 'assets/images/my_courses.jpg',
                     color: const Color(0xFF6C63FF),
-                    onTap: () => Navigator.pushNamed(context, '/courses'),
+                    onTap: () => Navigator.pushNamed(context, '/enrolled-courses'),
                   ),
                   _buildFeatureCardWithImage(
                     title: 'Assignments',
