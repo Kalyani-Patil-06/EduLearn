@@ -374,7 +374,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 const SizedBox(height: 16),
                 
                 // Biometric Authentication Section
-                if (_biometricAvailable) ..[
+                if (_biometricAvailable) ...[
                   Row(
                     children: [
                       Expanded(child: Divider(color: Colors.grey.shade300)),

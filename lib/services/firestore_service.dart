@@ -658,24 +658,7 @@ class FirestoreService {
     }
   }
 
-  // Force create new assignments (for testing)
-  Future<void> createFreshAssignments() async {
-    try {
-      // Delete existing assignments
-      QuerySnapshot existing = await _firestore.collection('assignments').get();
-      WriteBatch batch = _firestore.batch();
-      for (var doc in existing.docs) {
-        batch.delete(doc.reference);
-      }
-      await batch.commit();
-      
-      // Create new assignments
-      await _createSampleAssignmentsIfNeeded();
-      print('✅ Fresh assignments created!');
-    } catch (e) {
-      print('Error creating fresh assignments: $e');
-    }
-  }
+
 
   Future<String?> createAssignment(Assignment assignment) async {
     try {
