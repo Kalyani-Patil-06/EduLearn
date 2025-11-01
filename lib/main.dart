@@ -1,3 +1,4 @@
+import 'package:e_education_app/screens/enrolled_courses_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:provider/provider.dart';
@@ -114,6 +115,7 @@ class MyApp extends StatelessWidget {
             // Student Routes
             '/home': (context) => const HomeScreen(),
             '/courses': (context) => const CoursesScreen(),
+            '/enrolled-courses': (context) => const EnrolledCoursesScreen(),
             '/profile': (context) => const ProfileScreen(),
             '/assignments': (context) => const AssignmentsScreen(),
             
